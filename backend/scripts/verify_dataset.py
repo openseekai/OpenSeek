@@ -1,4 +1,4 @@
-"""
+run """
 DeepShield — Dataset Verifier
 ==============================
 Checks that the data/ folder is valid before training.

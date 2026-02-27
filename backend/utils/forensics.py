@@ -5,7 +5,8 @@ from typing import Dict, Optional
 class MetadataAnalyzer:
     """
     Forensic Tool: Scans image metadata for AI signatures.
-    Targets EXIF/IPTC tags that modern AI models often leak.
+    Targets EXIF/IPTC tags that modern AI models often leak, 
+    and penalizes missing or impossible camera parameter combinations.
     """
     AI_SIGNATURES = [
         "dall-e", "midjourney", "stable diffusion", "adobe firefly",
@@ -15,22 +16,64 @@ class MetadataAnalyzer:
 
     @staticmethod
     def scan(image_path: str) -> Dict:
-        """Analyze image metadata for AI software traces."""
-        info = {"has_ai_metadata": False, "software": None, "tags_found": []}
+        """Analyze image metadata for AI software traces and parameter inconsistencies."""
+        info = {
+            "has_ai_metadata": False, 
+            "software": None, 
+            "tags_found": [],
+            "suspicion_score": 0.0,
+            "anomalies": []
+        }
+        
         try:
             img = PIL.Image.open(image_path)
             exif = img.getexif()
             
+            if not exif:
+                # No standard EXIF. Suspicious if from a raw source, but common on social media.
+                # Just add a lightweight baseline suspicion.
+                info["suspicion_score"] = 0.2
+                info["anomalies"].append("Missing entire EXIF block")
+                return info
+
+            valid_camera_found = False
+            has_iso = False
+            has_exposure = False
+            
             # Check standard EXIF tags
             for tag_id, value in exif.items():
                 tag = PIL.ExifTags.TAGS.get(tag_id, tag_id)
-                if isinstance(value, str):
-                    val_lower = value.lower()
-                    for sig in MetadataAnalyzer.AI_SIGNATURES:
-                        if sig in val_lower:
-                            info["has_ai_metadata"] = True
-                            info["software"] = sig
-                            info["tags_found"].append(f"{tag}: {sig}")
+                value_str = str(value).lower()
+                
+                # Check for explicit AI signatures
+                for sig in MetadataAnalyzer.AI_SIGNATURES:
+                    if sig in value_str:
+                        info["has_ai_metadata"] = True
+                        info["software"] = sig
+                        info["tags_found"].append(f"{tag}: {sig}")
+                        info["suspicion_score"] = 1.0
+                
+                # Advanced EXIF Verification
+                if tag in ['Make', 'Model']:
+                    if any(x in value_str for x in ['canon', 'nikon', 'sony', 'apple', 'samsung', 'google', 'fujifilm', 'panasonic']):
+                        valid_camera_found = True
+                    elif len(value_str) > 2:
+                        # Obscure or fake Make/Model string
+                        info["anomalies"].append(f"Suspicious Camera {tag}: {value}")
+                        
+                if tag == 'ISOSpeedRatings':
+                    has_iso = True
+                if tag == 'ExposureTime':
+                    has_exposure = True
+
+            # If there's EXIF data, but it claims to be a photo without physical sensors
+            if exif and (not valid_camera_found):
+                info["suspicion_score"] += 0.3
+                info["anomalies"].append("EXIF present but lacks valid Camera Make/Model")
+            
+            if valid_camera_found and not (has_iso or has_exposure):
+                info["suspicion_score"] += 0.4
+                info["anomalies"].append("Claims to be real camera but lacks required sensor parameters (ISO/Exposure)")
 
             # Check for TIFF software tag (common for Firefly/Canva)
             if hasattr(img, 'info') and 'software' in img.info:
@@ -40,10 +83,12 @@ class MetadataAnalyzer:
                         info["has_ai_metadata"] = True
                         info["software"] = sig
                         info["tags_found"].append(f"Software: {sig}")
+                        info["suspicion_score"] = 1.0
 
         except Exception as e:
             print(f"[Metadata] Error: {e}")
             
+        info["suspicion_score"] = min(info["suspicion_score"], 1.0)
         return info
 
 class ExplanationGenerator:

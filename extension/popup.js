@@ -75,11 +75,22 @@ function renderHistory(history) {
     history.slice(0, 20).forEach(h => {
         const item = document.createElement("div");
         item.className = "history-item";
+
+        let cType = h.content_type || "Photograph";
+        let pClass = h.predicted_class || (h.risk_level === "High" ? "AI" : "Real");
+        let scoreStr = h.ai_probability ? Math.round(h.ai_probability * 100) : Math.round(h.score || 0);
+
         item.innerHTML = `
-      <span class="risk-chip chip-${h.risk_level}">${h.risk_level}</span>
-      <span class="history-type">${typeEmoji(h.type)} ${h.type}</span>
-      <span class="history-url" title="${h.url}">${shortUrl(h.url)}</span>
-      <span class="history-score">${Math.round(h.score)}</span>
+      <div style="display:flex; justify-content: space-between; align-items: center; width:100%; margin-bottom: 4px;">    
+        <span class="risk-chip chip-${h.risk_level}">${h.risk_level} (${scoreStr}%)</span>
+        <span class="history-type">${typeEmoji(h.type)} ${h.type}</span>
+      </div>
+      <div style="font-size:0.85em; color:#fff; opacity:0.8; text-align:left; margin-bottom: 2px;">
+         [${cType}] → <strong>${pClass.replace("_", " ")}</strong>
+      </div>
+      <div style="display:flex; justify-content:space-between; width:100%; font-size:0.8em; opacity: 0.6;">
+        <span class="history-url" title="${h.url}">${shortUrl(h.url)}</span>
+      </div>
     `;
         historyList.appendChild(item);
     });

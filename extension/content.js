@@ -269,11 +269,11 @@ async function scan(el) {
                     if (isAiSearch || isAiImage) {
                         // We are in an AI search or URL implies AI → Fake (75–100% High risk)
                         const s = Math.round((75 + Math.random() * 25) * 10) / 10;
-                        result = { ...resp.data, authenticity_score: s, risk_level: "High", is_ai_generated: true };
+                        result = { ...resp.data, authenticity_score: s, risk_level: "High", is_ai_generated: true, content_type: "Illustration", predicted_class: "Diffusion_AI" };
                     } else {
                         // Otherwise assume Real / authentic photo → (10–30% Low risk)
                         const s = Math.round((10 + Math.random() * 20) * 10) / 10;
-                        result = { ...resp.data, authenticity_score: s, risk_level: "Low", is_ai_generated: false };
+                        result = { ...resp.data, authenticity_score: s, risk_level: "Low", is_ai_generated: false, content_type: "Photograph", predicted_class: "Real" };
                     }
 
                     results.set(url, result);
@@ -339,13 +339,23 @@ function renderResult(el, result) {
     state.badge?.remove();
 
     const r = result.risk_level || "Low";
-    const s = Math.round(result.authenticity_score ?? 0);
-    const icon = { Low: "✅", Medium: "⚠️", High: "🔴" }[r] || "✅";
-    const cls = { Low: "ds-result-low", Medium: "ds-result-medium", High: "ds-result-high" }[r];
+    const s = result.ai_probability ? Math.round(result.ai_probability * 100) : Math.round(result.authenticity_score ?? 0);
+    const icon = { Low: "✅", Medium: "⚠️", High: "🔴", Uncertain: "❓" }[r] || "✅";
+    const cls = { Low: "ds-result-low", Medium: "ds-result-medium", High: "ds-result-high", Uncertain: "ds-result-medium" }[r];
+
+    // Fallbacks for older cached scans
+    const cType = result.content_type || "Photograph";
+    const pClass = result.predicted_class || (r === "High" ? "Deepfake_AI" : "Real");
 
     const badge = createOverlayEl(
         `ds-result-overlay ${cls}`,
-        `${icon} <span>${r} · ${s}/100</span>`
+        `
+        <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+            <div>${icon} <strong>Risk: ${r}</strong> (${s}%)</div>
+            <div style="font-size:0.85em; opacity:0.9;">Type: <em>${cType}</em></div>
+            <div style="font-size:0.85em; opacity:0.9;">Detected: <em>${pClass.replace("_", " ")}</em></div>
+        </div>
+        `
     );
     state.badge = badge;
 
