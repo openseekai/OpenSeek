@@ -33,3 +33,18 @@ Thumbs.db
 *.pth
 *.onnx
 *.h5
+
+# Dataset (too large for git — store on Drive / Kaggle)
+data/
+data.zip
+*.zip
+
+# Temp uploads & cache
+temp_uploads/
+deepshield_cache.db
+
+# TensorBoard runs
+runs/
+
+# Training checkpoints output
+training/checkpoints/
