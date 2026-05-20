@@ -74,7 +74,7 @@ class AdvancedForensicEnsemble(nn.Module):
         self.spatial_model.classifier[1] = nn.Linear(self.spatial_model.classifier[1].in_features, 1)
         self.spatial_model.to(self.device).eval()
 
-        # Grad-CAM hooks
+        # Grad-CAM hooks (only used when fast=False)
         self.gradients = None
         self.activations = None
         self.target_layer = self.spatial_model.features[-1]
@@ -224,22 +224,28 @@ class AdvancedForensicEnsemble(nn.Module):
         base64_heatmap = base64.b64encode(buffer).decode('utf-8')
         return base64_heatmap
 
-    def forward_analyze(self, image_path: str):
+    def forward_analyze(self, image_path: str, fast: bool = True):
         img = Image.open(image_path).convert("RGB")
         original_img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         
         input_tensor = self.transform(img).unsqueeze(0).to(self.device)
-        input_tensor.requires_grad = True 
         
         # 0. Route Classification via MobileNetV3
         content_type = self.content_type_classifier.classify(input_tensor)
         is_illustration = (content_type in ["Digital Illustration", "3D Render"])
         
-        # 1. Spatial Model & Explainability
-        spatial_logit = self.spatial_model(input_tensor)
-        spatial_prob = torch.sigmoid(self.calibrator(spatial_logit)).item()
-        heatmap_base64 = self.calculate_gradcam(input_tensor, original_img_cv)
-        input_tensor.requires_grad = False
+        # 1. Spatial Model (skip Grad-CAM in fast mode for speed)
+        if fast:
+            with torch.no_grad():
+                spatial_logit = self.spatial_model(input_tensor)
+                spatial_prob = torch.sigmoid(self.calibrator(spatial_logit)).item()
+            heatmap_base64 = None
+        else:
+            input_tensor.requires_grad = True
+            spatial_logit = self.spatial_model(input_tensor)
+            spatial_prob = torch.sigmoid(self.calibrator(spatial_logit)).item()
+            heatmap_base64 = self.calculate_gradcam(input_tensor, original_img_cv)
+            input_tensor.requires_grad = False
 
         with torch.no_grad():
             freq_tensor = self._get_fft_magnitude(original_img_cv)
@@ -256,7 +262,10 @@ class AdvancedForensicEnsemble(nn.Module):
                 res_logit = self.residual_model(res_tensor)
                 authentic_prnu_prob = torch.sigmoid(self.calibrator(res_logit)).item()
                 
-                patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
+                if not fast:
+                    patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
+                else:
+                    patch_prob, manipulated_count = 0.0, 0
 
                 # Rebalanced Formula: Photograph
                 base_score = (0.50 * spatial_prob) + (0.30 * freq_prob) + (0.20 * embedding_dist_score)
@@ -282,7 +291,10 @@ class AdvancedForensicEnsemble(nn.Module):
                 freq_logit = self.freq_model(freq_tensor) # Basic FFT artifacts
                 freq_prob = torch.sigmoid(self.calibrator(freq_logit)).item()
                 
-                patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
+                if not fast:
+                    patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
+                else:
+                    patch_prob, manipulated_count = 0.0, 0
                 
                 # Rebalanced Formula: Illustration
                 ai_probability = (0.50 * diffusion_score) + (0.25 * embedding_dist_score) + (0.25 * freq_prob)
@@ -309,7 +321,7 @@ class AdvancedForensicEnsemble(nn.Module):
             "predicted_class": predicted_class,
             "confidence_score": round(confidence_score, 4),
             "risk_level": risk_level,
-            "manipulated_regions_heatmap": f"data:image/jpeg;base64,{heatmap_base64}",
+            "manipulated_regions_heatmap": f"data:image/jpeg;base64,{heatmap_base64}" if heatmap_base64 else None,
             "patch_manipulated_count": manipulated_count,
             "embedding_anomaly_score": round(embedding_dist_score, 4)
         }

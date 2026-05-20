@@ -101,35 +101,18 @@ async def detect_image(file: UploadFile = File(...)):
         return cached
 
     try:
-        # 1. Full Image Analysis
-        full_res = _ensemble.forward_analyze(temp_path)
+        # 1. Full Image Analysis (fast mode: skip Grad-CAM + patch scan)
+        full_res = _ensemble.forward_analyze(temp_path, fast=True)
         
-        # 2. Face-Focused Layer
+        # 2. Face-Focused Layer (quick detection only, no second full pass)
         img_cv = cv2.imread(temp_path)
         faces = _face_detector.detect(img_cv)
         
         final_probability = full_res["ai_probability"]
         
+        # If faces found, boost probability slightly (no slow second forward pass)
         if faces:
-            # Get largest face bbox
-            best_face = max(faces, key=lambda f: f["bbox"][2]*f["bbox"][3])
-            x, y, w, h = best_face["bbox"]
-            margin = int(0.1 * max(w, h))
-            
-            x1 = max(0, x - margin)
-            y1 = max(0, y - margin)
-            x2 = min(img_cv.shape[1], x + w + margin)
-            y2 = min(img_cv.shape[0], y + h + margin)
-            
-            face_crop = img_cv[y1:y2, x1:x2]
-            face_path = os.path.join(temp_dir, f"face_{uuid.uuid4()}.jpg")
-            cv2.imwrite(face_path, face_crop)
-            
-            face_res = _ensemble.forward_analyze(face_path)
-            os.remove(face_path)
-            
-            # Combine core score with face score (70/30 weighting)
-            final_probability = (0.7 * full_res["ai_probability"]) + (0.3 * face_res["ai_probability"])
+            final_probability = min(1.0, full_res["ai_probability"] * 1.05)
         
         # Re-calc risk level logic
         if final_probability <= 0.40: risk = "Low"
