@@ -15,7 +15,7 @@ aiosqlite>=0.20.0
 # PyTorch will be installed as CPU-only directly in the Dockerfile to save space.
 
 # ─── Computer Vision ──────────────────────────────────────────────────────────
-opencv-python-headless>=4.9.0.80
+opencv-contrib-python>=4.9.0.80
 mediapipe>=0.10.9
 Pillow>=10.0.0
 
