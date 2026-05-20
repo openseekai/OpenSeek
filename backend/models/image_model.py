@@ -143,10 +143,38 @@ def _is_human_signature(img_bgr: np.ndarray) -> bool:
     except:
         return True # Fallback to safe mode (Trust realism) if check fails
 
+def _error_level_analysis(img_bgr: np.ndarray, quality: int = 90) -> float:
+    """
+    Advanced Error Level Analysis (ELA).
+    Identifies if a part of the image was spliced by checking compression signatures.
+    """
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+    result, encimg = cv2.imencode('.jpg', img_bgr, encode_param)
+    if not result:
+        return 0.5
+    
+    decimg = cv2.imdecode(encimg, 1)
+    diff = np.abs(img_bgr.astype(np.float32) - decimg.astype(np.float32))
+    
+    max_diff = np.max(diff)
+    mean_diff = np.mean(diff)
+    
+    if mean_diff < 1e-5:
+        return 0.5
+        
+    score = (max_diff / mean_diff) / 50.0 
+    return float(np.clip(score, 0.0, 1.0))
+
 def _heuristic_score(img_bgr: np.ndarray) -> float:
     img_bgr = cv2.resize(img_bgr, (512, 512))
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    return float(0.35*_dct_artifact_score(gray) + 0.25*_lbp_entropy_score(gray) + 0.40*_noise_variance(img_bgr))
+    
+    ela = _error_level_analysis(img_bgr)
+    dct = _dct_artifact_score(gray)
+    lbp = _lbp_entropy_score(gray)
+    noise = _noise_variance(img_bgr)
+    
+    return float(0.30*ela + 0.30*dct + 0.15*lbp + 0.25*noise)
 
 def _calibrate(raw: float) -> float:
     """
@@ -280,4 +308,5 @@ def analyze_image(image_path: str) -> dict:
         "facial_inconsistency": round(_sharpness_asymmetry(img_bgr), 4),
         "lighting_mismatch": round(np.std([ch.mean() for ch in cv2.split(img_bgr)]) / (img_bgr.mean() + 1e-9) * 5.0, 4),
         "gan_artifacts": round(_dct_artifact_score(gray), 4),
+        "error_level_analysis": round(_error_level_analysis(img_bgr), 4),
     }
