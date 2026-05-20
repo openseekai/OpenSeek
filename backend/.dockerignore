@@ -1,34 +1,33 @@
+# Ignore Python cache files
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg
 *.egg-info/
-.eggs/
+dist/
+build/
 
-# Virtual environments
-.venv/
+# Ignore virtual environments
 venv/
+.venv/
 env/
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+# Ignore large data/training files (not needed in Docker)
+data/
+training/
+runs/
+weights/
+temp_uploads/
+data.zip
 
-# IDE
-.vscode/
-.idea/
-*.swp
+# Ignore SQLite databases
+*.db
 
-# OS
-.DS_Store
-Thumbs.db
+# Ignore test files
+tests/
+test_*.py
 
-# Local database (mounted as volume in prod)
-deepshield.db
-
-# Environment files
-.env
-
-# Temp files
-/tmp/
-*.tmp
+# Ignore logs
+*.log

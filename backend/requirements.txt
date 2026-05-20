@@ -12,7 +12,7 @@ slowapi>=0.1.9
 # ─── Async SQLite ─────────────────────────────────────────────────────────────
 aiosqlite>=0.20.0
 
-# ─── PyTorch (CPU-only for portability; swap for GPU build if needed) ─────────
+# ─── PyTorch (CPU-only for Cloud Run) ─────────────────────────────────────────
 torch>=2.2.0
 torchvision>=0.17.0
 
@@ -21,27 +21,15 @@ opencv-python-headless>=4.9.0.80
 mediapipe>=0.10.9
 Pillow>=10.0.0
 
-# ─── Audio ────────────────────────────────────────────────────────────────────
-librosa>=0.10.1
-soundfile>=0.12.1
-audioread>=3.0.1
-soxr>=0.3.7
-
 # ─── Numerics ─────────────────────────────────────────────────────────────────
 numpy>=1.26.0
 
-# ─── Testing ──────────────────────────────────────────────────────────────────
-pytest>=8.0.0
-pytest-asyncio>=0.23.0
-anyio>=4.0.0
-
-# ─── AI Models (HuggingFace & Specialized) ────────────────────────────────────
+# ─── AI Models (HuggingFace) ──────────────────────────────────────────────────
 transformers>=4.40.0
 accelerate>=0.30.0
 timm>=0.9.0
 einops>=0.7.0
 lpips>=0.1.4
 
-# ─── Dataset Download & Training Utilities ────────────────────────────────────
-kagglehub>=0.2.0
+# ─── Utilities ────────────────────────────────────────────────────────────────
 tqdm>=4.66.0
