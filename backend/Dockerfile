@@ -1,10 +1,9 @@
-# Use Python 3.11 slim as base - much smaller than full Python
+# Use Python 3.11 slim as base
 FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
 
 # Install system dependencies needed for OpenCV and MediaPipe
 RUN apt-get update && apt-get install -y \
@@ -30,8 +29,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy the rest of the backend code
 COPY . .
 
-# Expose the port Cloud Run uses
+# Expose port 8080 (Cloud Run default)
 EXPOSE 8080
 
-# Start the FastAPI server
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1
+# Use shell form so $PORT is properly expanded at runtime
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --timeout-keep-alive 75"]
