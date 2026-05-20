@@ -30,3 +30,12 @@ except Exception:
     models.efficientnet_b0(pretrained=False)
 
 print("[OpenSeek Build] All model weights pre-downloaded successfully!")
+
+# Test MediaPipe import at build time to debug import errors
+print("[OpenSeek Build] Testing MediaPipe import...")
+import mediapipe as mp
+print(f"[OpenSeek Build] MediaPipe version: {mp.__version__}")
+print(f"[OpenSeek Build] MediaPipe file: {mp.__file__}")
+print(f"[OpenSeek Build] MediaPipe solutions: {mp.solutions}")
+print("[OpenSeek Build] MediaPipe test passed!")
+
