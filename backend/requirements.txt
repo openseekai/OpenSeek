@@ -12,9 +12,7 @@ slowapi>=0.1.9
 # ─── Async SQLite ─────────────────────────────────────────────────────────────
 aiosqlite>=0.20.0
 
-# ─── PyTorch (CPU-only for Cloud Run) ─────────────────────────────────────────
-torch>=2.2.0
-torchvision>=0.17.0
+# PyTorch will be installed as CPU-only directly in the Dockerfile to save space.
 
 # ─── Computer Vision ──────────────────────────────────────────────────────────
 opencv-python-headless>=4.9.0.80

@@ -4,6 +4,8 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV TORCH_HOME=/app/cache/torch
+ENV HF_HOME=/app/cache/huggingface
 
 # Install system dependencies needed for OpenCV and MediaPipe
 RUN apt-get update && apt-get install -y \
@@ -22,12 +24,16 @@ WORKDIR /app
 # Copy requirements first (for better Docker layer caching)
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies (CPU-only PyTorch to save space, then other requirements)
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the backend code
 COPY . .
+
+# Run pre-download script to cache PyTorch and Hugging Face weights inside the image
+RUN python download_models.py
 
 # Expose port 8080 (Cloud Run default)
 EXPOSE 8080
