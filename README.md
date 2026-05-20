@@ -1,37 +1,65 @@
 <div align="center">
-  <h1>🛡️ OpenSeek (OpenSeek)</h1>
+  <img src="https://img.shields.io/badge/Status-Active-success.svg?style=for-the-badge" alt="Status">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue.svg?style=for-the-badge&logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Chrome-Extension-4285F4.svg?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Chrome Extension">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License">
+
+  <br><br>
+
+  <h1>🛡️ OpenSeek</h1>
   <p><strong>Advanced Image-Only Deepfake & AI Generation Detection Tool</strong></p>
   <br>
 </div>
 
-Welcome to **OpenSeek** (internally known as OpenSeek)! This is a powerful, open-source tool designed to help you instantly detect AI-generated images and deepfakes directly in your browser. 
+---
 
-Whether an image is a deepfake manipulation, created by diffusion models (like Midjourney or Stable Diffusion), or a genuine photograph, OpenSeek uses a research-grade machine learning backend to analyze the image and tell you the truth.
+## 📖 Short Description
+
+**OpenSeek** is a powerful, open-source forensic tool designed to help you instantly detect AI-generated images and deepfakes directly in your browser. Using a research-grade machine learning backend, it analyzes spatial inconsistencies, lighting mismatches, and AI artifacts to confidently tell you if an image is a deepfake manipulation, AI-generated (Midjourney, Stable Diffusion), or a genuine photograph.
 
 ---
 
-## 🚀 Features
+## ✨ Features
 
 - **Chrome Extension Integration**: Right-click on any image while browsing the web and select **"Analyze for Deepfake"** to instantly scan it.
-- **Advanced Machine Learning**: Uses an EfficientNet-based ensemble model to analyze spatial inconsistencies, lighting mismatches, and AI artifacts.
+- **Advanced Machine Learning**: Uses an EfficientNet-based ensemble model and Vision Transformers (ViT).
 - **Face-Focused Layer**: Automatically crops and heavily scrutinizes faces for AI tampering.
 - **Risk Level Scoring**: Returns a simple, easy-to-understand risk level (🟢 Low, 🟡 Medium, 🔴 High) and a percentage score.
 - **Privacy First**: Images are temporarily analyzed and deleted immediately from the server; logs are kept locally in a SQLite database.
 
 ---
 
-## 🛠️ How It Works
+## 📸 Screenshots
 
-The project is split into two parts:
-1. **The Backend (`/backend`)**: A fast, local API server built with Python and FastAPI. It runs the PyTorch machine learning models.
-2. **The Extension (`/extension`)**: A Chrome extension that allows you to trigger scans from any webpage without leaving your browser.
+*(Add your screenshots here!)*
+
+> *Pro tip: Take a screenshot of the context menu and the popup showing a 99% Deepfake result, and drag-and-drop them into this section.*
 
 ---
 
-## 📖 Installation Guide
+## 🛠️ How It Works
+
+1. **User Request**: The user right-clicks an image in the browser and clicks "Analyze for Deepfake".
+2. **Data Extraction**: The Chrome Extension extracts the image data and sends it securely to the local backend.
+3. **Forensic Pipeline**: The backend runs the image through face detectors, spatial frequency analyzers, and an EfficientNet ensemble model.
+4. **Scoring**: A final blended confidence score is calculated.
+5. **UI Rendering**: The result (Real vs. AI) is immediately passed back to the extension popup for the user to review.
+
+---
+
+## 💻 Tech Stack
+
+- **Backend / Machine Learning**: Python, FastAPI, PyTorch, OpenCV, HuggingFace Transformers
+- **Database**: SQLite (Local caching and request logging)
+- **Frontend / Extension**: JavaScript (Manifest V3), HTML5, CSS3
+
+---
+
+## 🚀 Installation Guide
 
 ### Step 1: Start the Backend (FastAPI)
-You need Python installed on your computer.
+You need Python 3.10+ installed on your computer.
 
 1. Open your terminal and navigate to the backend folder:
    ```bash
@@ -63,23 +91,97 @@ You need Python installed on your computer.
 3. Click the **Load unpacked** button in the top left.
 4. Select the `extension` folder from this repository.
 
-### Step 3: Start Scanning!
-1. Keep the backend terminal running.
-2. Go to any website with images (like Google Images, Twitter, etc.).
-3. Right-click on an image and click **"Analyze for Deepfake"**.
-4. A notification and a small overlay will appear telling you if the image is real or AI-generated!
+---
+
+## 🎮 Usage Guide
+
+1. Ensure the Python backend is actively running in your terminal.
+2. Go to any website with images (e.g., Twitter, Google Images, Reddit).
+3. **Right-click** on a suspect image and click **"Analyze for Deepfake"**.
+4. The OpenSeek extension will instantly notify you if the image is real or AI-generated!
+
+---
+
+## 📂 Project Structure
+
+```text
+OpenSeek/
+├── backend/                  # Python FastAPI Backend
+│   ├── main.py               # Main API entry point
+│   ├── models/               # ML Models (Image detectors)
+│   ├── routers/              # API Route definitions
+│   └── requirements.txt      # Python dependencies
+├── extension/                # Google Chrome Extension
+│   ├── background.js         # Service worker (Context Menu)
+│   ├── popup.html/.js        # Extension UI
+│   └── manifest.json         # Manifest V3 configuration
+├── LICENSE                   # MIT License
+└── README.md                 # This documentation
+```
+
+---
+
+## 🔌 API Endpoint
+
+If you want to integrate OpenSeek into your own app, you can use the backend directly!
+
+**POST** `/analyze-image`
+- **Payload (Form Data)**: `file` (The image file to upload)
+- **Response**:
+```json
+{
+  "status": "success",
+  "result": {
+    "is_deepfake": true,
+    "confidence_score": 0.98,
+    "risk_level": "High Risk",
+    "details": {
+      "face_detected": true,
+      "model_version": "v1.2"
+    }
+  }
+}
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Add support for batch image analysis.
+- [ ] Implement cloud-sync for history and analytics.
+- [ ] Expand the ensemble to detect newer Flux and Midjourney v6 models.
+- [ ] Port the extension to Firefox.
 
 ---
 
 ## 🤝 Contributing
 
-This project is fully open-source under the **MIT License**. Contributions, bug reports, and pull requests are highly welcome! 
+Contributions, issues, and feature requests are welcome! 
 
-1. Fork the project.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
+1. Fork the Project.
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`).
+4. Push to the Branch (`git push origin feature/AmazingFeature`).
 5. Open a Pull Request.
 
 ---
-*Built with ❤️ to keep the internet transparent.*
+
+## 📜 License
+
+Distributed under the **MIT License**. See the `LICENSE` file for more information.
+
+---
+
+## 👥 Contributors
+
+This project is actively maintained by [Yash Bansal](https://github.com/yashbansal-dev). Feel free to reach out for collaborations!
+
+---
+
+## ⭐ Star the Repo
+
+If you find this project useful, helpful, or interesting, please consider leaving a star ⭐ on the repository! It helps the project grow and reach more people.
+
+<div align="center">
+  Built with ❤️ to keep the internet transparent.
+</div>
