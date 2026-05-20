@@ -224,7 +224,7 @@ function attach(el) {
 
     // Button removed per user request
 
-    document.addEventListener("scroll", updatePos, { passive: true });
+    document.addEventListener("scroll", updatePos, { passive: true, capture: true });
     window.addEventListener("resize", updatePos, { passive: true });
     updatePos();
 }
