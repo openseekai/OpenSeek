@@ -6,7 +6,7 @@
  * On social media: captures canvas frames (avoids auth-gated CDN URL issues).
  */
 
-const BACKEND = "http://localhost:8000";
+const BACKEND = "https://openseek-763952043156.europe-west1.run.app";
 const MIN_SIZE = 80;
 const MAX_CONCURRENT = 3;
 

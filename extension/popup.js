@@ -3,7 +3,7 @@
  * Loads history, shows stats, handles button actions.
  */
 
-const BACKEND = "http://localhost:8000";
+const BACKEND = "https://openseek-763952043156.europe-west1.run.app";
 
 /* ─── DOM refs ─────────────────────────────────────────────────────────────── */
 const dot = document.getElementById("dot");

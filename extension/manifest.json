@@ -10,7 +10,7 @@
         "notifications"
     ],
     "host_permissions": [
-        "http://localhost:8000/*",
+        "https://openseek-763952043156.europe-west1.run.app/*",
         "<all_urls>"
     ],
     "background": {
