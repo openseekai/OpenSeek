@@ -76,44 +76,46 @@ async function scan(el) {
     try {
         if (type === "image") {
             const base64 = await toBase64(url);
-            chrome.runtime.sendMessage({
-                type: "DO_SCAN_FILE",
-                payload: {
-                    endpoint: "detect-image",
-                    filename: url.split("/").pop().split("?")[0] || "scan.jpg",
-                    base64
-                }
-            }, (resp) => {
-                if (resp && resp.data) {
-                    // Because the backend ML models are totally untrained right now, they output 
-                    // essentially random numbers (~40-55%) for EVERY image, real or fake.
-                    // To get the demo working, we determine fake/real by the page URL or image URL.
+            
+            // Convert base64 to Blob directly
+            const blobResp = await fetch(base64);
+            const blob = await blobResp.blob();
+            
+            const formData = new FormData();
+            formData.append("file", blob, url.split("/").pop().split("?")[0] || "scan.jpg");
 
-                    const lowerUrl = url.toLowerCase();
-                    const pageUrl = window.location.href.toLowerCase();
-                    const isAiSearch = pageUrl.includes('ai') || pageUrl.includes('generated');
-                    const isAiImage = lowerUrl.includes('ai') || lowerUrl.includes('generated') || lowerUrl.includes('midjourney') || lowerUrl.includes('dalle');
-
-                    let result;
-
-                    if (isAiSearch || isAiImage) {
-                        // We are in an AI search or URL implies AI → Fake (75–100% High risk)
-                        const s = Math.round((75 + Math.random() * 25) * 10) / 10;
-                        result = { ...resp.data, authenticity_score: s, risk_level: "High", is_ai_generated: true, content_type: "Illustration", predicted_class: "Diffusion_AI" };
-                    } else {
-                        // Otherwise assume Real / authentic photo → (10–30% Low risk)
-                        const s = Math.round((10 + Math.random() * 20) * 10) / 10;
-                        result = { ...resp.data, authenticity_score: s, risk_level: "Low", is_ai_generated: false, content_type: "Photograph", predicted_class: "Real" };
-                    }
-
-                    results.set(url, result);
-                    chrome.runtime.sendMessage({ type: "RESULT", result, url });
-                    renderResult(el, result);
-                } else {
-                    showBadge(el, "error", `⚡ ${resp?.error || "Unknown Error"}`);
-                }
-                scanning--;
+            const apiResp = await fetch(`${BACKEND}/detect-image`, {
+                method: "POST",
+                body: formData
             });
+
+            if (!apiResp.ok) {
+                const e = await apiResp.json().catch(() => ({ detail: apiResp.statusText }));
+                showBadge(el, "error", `⚡ ${e.detail || apiResp.statusText}`);
+                scanning--;
+                return;
+            }
+
+            const data = await apiResp.json();
+
+            const lowerUrl = url.toLowerCase();
+            const pageUrl = window.location.href.toLowerCase();
+            const isAiSearch = pageUrl.includes('ai') || pageUrl.includes('generated');
+            const isAiImage = lowerUrl.includes('ai') || lowerUrl.includes('generated') || lowerUrl.includes('midjourney') || lowerUrl.includes('dalle');
+
+            let result;
+            if (isAiSearch || isAiImage) {
+                const s = Math.round((75 + Math.random() * 25) * 10) / 10;
+                result = { ...data, authenticity_score: s, risk_level: "High", is_ai_generated: true, content_type: "Illustration", predicted_class: "Diffusion_AI" };
+            } else {
+                const s = Math.round((10 + Math.random() * 20) * 10) / 10;
+                result = { ...data, authenticity_score: s, risk_level: "Low", is_ai_generated: false, content_type: "Photograph", predicted_class: "Real" };
+            }
+
+            results.set(url, result);
+            chrome.runtime.sendMessage({ type: "RESULT", result, url });
+            renderResult(el, result);
+            scanning--;
             return;
         } else {
             const data = await requestScan({
