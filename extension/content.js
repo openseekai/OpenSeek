@@ -9,8 +9,6 @@
 const BACKEND = "http://localhost:8000";
 const MIN_SIZE = 80;
 const MAX_CONCURRENT = 3;
-const SOCIAL_HOSTS = /instagram|facebook|tiktok|youtube|twitter|x\.com/i;
-const IS_SOCIAL = SOCIAL_HOSTS.test(location.hostname);
 
 /* ─── State ─────────────────────────────────────────────────────────────── */
 const seen = new WeakMap();   // el → { btn, badge }
@@ -18,97 +16,9 @@ const results = new Map();       // url → result
 const videoUrls = new WeakMap();   // video el → real CDN url
 let scanning = 0;
 
-/* ─── Intercept fetch() for video CDN URLs ──────────────────────────────── */
-if (SOCIAL_HOSTS.test(location.hostname)) {
-    const _fetch = window.fetch.bind(window);
-    window.fetch = function (input, init) {
-        const url = typeof input === "string" ? input : (input?.url || "");
-        if (url.startsWith("http") && /\.(mp4|webm|m4v)(\?|$)/i.test(url)) {
-            setTimeout(() => {
-                document.querySelectorAll("video").forEach(v => {
-                    if (!videoUrls.has(v)) videoUrls.set(v, url);
-                });
-            }, 100);
-        }
-        return _fetch(input, init);
-    };
-}
-
-/* ─── Extract video URL from Instagram's embedded page JSON ─────────────
-   Instagram always embeds the real CDN URL in inline <script> tags.
-   This is the most reliable method for Reels.
-   ─────────────────────────────────────────────────────────────────────── */
-function getInstagramVideoUrlFromPage() {
-    const patterns = [
-        /"video_url"\s*:\s*"(https:[^"]+)"/,
-        /"playback_url"\s*:\s*"(https:[^"]+)"/,
-        /"contentUrl"\s*:\s*"(https:[^"]+\.mp4[^"]*)"/,
-        /(https:\/\/[a-z0-9\-]+\.cdninstagram\.com\/[^\s"'<>]+\.mp4[^\s"'<>]*)/,
-        /(https:\/\/[a-z0-9\-]+\.fbcdn\.net\/[^\s"'<>]+\.mp4[^\s"'<>]*)/,
-    ];
-
-    for (const script of document.querySelectorAll("script")) {
-        const text = script.textContent || "";
-        if (!text.includes("mp4") && !text.includes("video_url")) continue;
-        for (const pat of patterns) {
-            const m = text.match(pat);
-            if (m) {
-                return m[1]
-                    .replace(/\\u0026/g, "&")
-                    .replace(/\\\//g, "/")
-                    .replace(/\\/g, "");
-            }
-        }
-    }
-
-    // Also check window.__additionalData (Instagram SPA)
-    try {
-        const ad = JSON.stringify(window.__additionalData || {});
-        for (const pat of patterns) {
-            const m = ad.match(pat);
-            if (m) return m[1].replace(/\\u0026/g, "&").replace(/\\\//g, "/");
-        }
-    } catch (_) { }
-
-    return null;
-}
-
 /* ─── Resolve real URL for any media element ────────────────────────────── */
 function getRealUrl(el) {
-    if (el.tagName === "VIDEO") {
-        // 1. Previously intercepted CDN URL
-        if (videoUrls.has(el)) return videoUrls.get(el);
-
-        // 2. data attributes (Instagram/TikTok inject these)
-        for (const attr of ["data-video-url", "data-src", "data-original-src"]) {
-            const v = el.getAttribute(attr);
-            if (v && v.startsWith("http")) return v;
-        }
-
-        // 3. <source> child elements
-        for (const s of el.querySelectorAll("source")) {
-            const v = s.src || s.getAttribute("src") || "";
-            if (v && v.startsWith("http")) return v;
-        }
-
-        // 4. Direct non-blob src
-        if (el.src && !el.src.startsWith("blob:") && el.src.startsWith("http")) {
-            return el.src;
-        }
-
-        // 5. Parse Instagram's embedded page JSON (most reliable for Reels)
-        if (/instagram|facebook/i.test(location.hostname)) {
-            const fromPage = getInstagramVideoUrlFromPage();
-            if (fromPage) {
-                videoUrls.set(el, fromPage);
-                return fromPage;
-            }
-        }
-
-        return null;
-    }
-
-    // Images / Audio
+    // Images
     const src = el.src || el.currentSrc || el.getAttribute("src") || "";
     return (src && src.startsWith("http")) ? src : null;
 }
@@ -123,81 +33,7 @@ function createOverlayEl(cls, html) {
     return el;
 }
 
-/* ─── Canvas frame capture (for social media videos) ───────────────────────── */
-async function captureVideoFrame(videoEl, seekTime) {
-    return new Promise((resolve, reject) => {
-        try {
-            const doCapture = () => {
-                const w = videoEl.videoWidth || 640;
-                const h = videoEl.videoHeight || 360;
-                if (w === 0 || h === 0) { reject(new Error("video not ready")); return; }
-                const canvas = document.createElement("canvas");
-                canvas.width = Math.min(w, 640);
-                canvas.height = Math.min(h, 360);
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL("image/jpeg", 0.80));
-            };
 
-            if (seekTime !== undefined && Math.abs(videoEl.currentTime - seekTime) > 0.5) {
-                videoEl.currentTime = seekTime;
-                const onSeeked = () => { videoEl.removeEventListener("seeked", onSeeked); doCapture(); };
-                videoEl.addEventListener("seeked", onSeeked, { once: true });
-            } else {
-                doCapture();
-            }
-        } catch (err) { reject(err); }
-    });
-}
-
-/* ─── Reel/Video scan — always returns a random 10–20% authentic score ──────
-   Frame scanning via backend is skipped because:
-   1. Social CDN URLs are auth-gated — canvas capture may be tainted
-   2. Untrained model weights produce unreliable scores
-   3. The result is independent of backend availability
-   ─────────────────────────────────────────────────────────────────────────── */
-async function scanViaFrame(el) {
-    const cacheKey = "__frame__" + location.href;
-    if (results.has(cacheKey)) { renderResult(el, results.get(cacheKey)); return; }
-
-    scanning++;
-    showBadge(el, "scanning", '<span class="ds-spinner"></span> Scanning video…');
-
-    try {
-        // Wait for video to be in a playable state
-        if (el.readyState < 2) {
-            await new Promise(r => el.addEventListener("loadeddata", r, { once: true }));
-        }
-
-        // Brief scanning animation (0.8 – 1.4s) so it feels like real work
-        await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
-
-        // Random authentic score: 10.0 – 20.0%
-        const displayScore = Math.round((10 + Math.random() * 10) * 10) / 10;
-
-        const finalResult = {
-            is_ai_generated: false,
-            authenticity_score: displayScore,
-            risk_level: "Low",
-            confidence: Math.round(displayScore),
-            version: "REEL_MULTIFRAME",
-            frame_count: 1,
-            scores: {}
-        };
-
-        results.set(cacheKey, finalResult);
-        chrome.runtime.sendMessage({ type: "RESULT", result: finalResult, url: location.href });
-        renderResult(el, finalResult);
-    } catch (e) {
-        const raw = e.message || "";
-        const msg = raw.includes("Extension context invalidated") ? "🔄 Refresh Page"
-            : raw.includes("not ready") ? "Video not loaded yet"
-                : raw.slice(0, 40);
-        showBadge(el, "error", `⚡ ${msg}`);
-    } finally {
-        scanning--;
-    }
-}
 
 /* ─── Send scan request via background service worker ───────────────────────── */
 // Content scripts can't reliably fetch localhost — route through background.
@@ -228,21 +64,15 @@ async function scan(el) {
     if (!state) return;
     if (scanning >= MAX_CONCURRENT) { showBadge(el, "error", "⚡ Busy—retry"); return; }
 
-    // Social media VIDEO → always use canvas frame capture (CDN URLs are auth-gated)
-    if (IS_SOCIAL && el.tagName === "VIDEO") {
-        return scanViaFrame(el);
-    }
-
     const url = getRealUrl(el);
     if (!url) {
-        if (el.tagName === "VIDEO") return scanViaFrame(el);
         showBadge(el, "error", "⚡ URL not found"); return;
     }
     if (results.has(url)) { renderResult(el, results.get(url)); return; }
 
     scanning++;
     showBadge(el, "scanning", '<span class="ds-spinner"></span> Scanning…');
-    const type = el.tagName === "VIDEO" ? "video" : el.tagName === "AUDIO" ? "audio" : "image";
+    const type = "image";
     try {
         if (type === "image") {
             const base64 = await toBase64(url);
@@ -382,14 +212,9 @@ function attach(el) {
 
     seen.set(el, { btn: null, badge: null });
 
-    const btn = createOverlayEl("ds-scan-overlay", "🛡 Scan");
-    seen.get(el).btn = btn;
-
     const updatePos = () => {
         const r = el.getBoundingClientRect();
         if (!r.width) return;
-        btn.style.top = `${r.top + 6}px`;
-        btn.style.left = `${r.right - 88}px`;
         const b = seen.get(el)?.badge;
         if (b) {
             b.style.top = `${r.bottom - 36}px`;
@@ -397,39 +222,7 @@ function attach(el) {
         }
     };
 
-    btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        scan(el);
-    });
-
-    // On social media: only show the button for the PLAYING video (not preloaded ones)
-    new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            let show = entry.isIntersecting;
-            // If social media VIDEO, only show button when it's the active (playing/focused) one
-            if (show && IS_SOCIAL && el.tagName === "VIDEO") {
-                // Hide if video is paused AND another video on the page is playing
-                const anyPlaying = [...document.querySelectorAll("video")].some(
-                    v => v !== el && !v.paused && !v.ended
-                );
-                if (anyPlaying && el.paused) show = false;
-            }
-            btn.style.display = show ? "block" : "none";
-            if (show) updatePos();
-        });
-    }, { threshold: 0.5 }).observe(el);
-
-    // Also update button visibility when play/pause state changes
-    if (IS_SOCIAL && el.tagName === "VIDEO") {
-        el.addEventListener("play", () => { btn.style.display = "block"; updatePos(); });
-        el.addEventListener("pause", () => {
-            const anyPlaying = [...document.querySelectorAll("video")].some(
-                v => v !== el && !v.paused && !v.ended
-            );
-            if (anyPlaying) btn.style.display = "none";
-        });
-    }
+    // Button removed per user request
 
     document.addEventListener("scroll", updatePos, { passive: true });
     window.addEventListener("resize", updatePos, { passive: true });
@@ -439,8 +232,8 @@ function attach(el) {
 /* ─── MutationObserver ──────────────────────────────────────────────────── */
 function processNode(node) {
     if (!(node instanceof Element)) return;
-    if (["IMG", "VIDEO", "AUDIO"].includes(node.tagName)) attach(node);
-    node.querySelectorAll("img,video,audio").forEach(attach);
+    if (node.tagName === "IMG") attach(node);
+    node.querySelectorAll("img").forEach(attach);
 }
 
 new MutationObserver(muts => {
@@ -452,19 +245,19 @@ new MutationObserver(muts => {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["src", "data-video-url", "data-src"],
+    attributeFilter: ["src"],
 });
 
-document.querySelectorAll("img,video,audio").forEach(attach);
+document.querySelectorAll("img").forEach(attach);
 
 window.addEventListener("load", () => {
-    document.querySelectorAll("img,video,audio").forEach(attach);
+    document.querySelectorAll("img").forEach(attach);
 });
 
 /* ─── Context menu trigger ───────────────────────────────────────────────── */
 chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "SCAN_CONTEXT") {
-        const el = [...document.querySelectorAll("img,video,audio")]
+        const el = [...document.querySelectorAll("img")]
             .find(e => getRealUrl(e) === msg.url || e.src === msg.url);
         if (el) scan(el);
     }

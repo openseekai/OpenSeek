@@ -10,18 +10,8 @@ const BACKEND = "http://localhost:8000";
 chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
         id: "deepshield-scan-image",
-        title: "🛡 DeepShield: Scan this image",
+        title: "Analyze for Deepfake",
         contexts: ["image"],
-    });
-    chrome.contextMenus.create({
-        id: "deepshield-scan-video",
-        title: "🛡 DeepShield: Scan this video",
-        contexts: ["video"],
-    });
-    chrome.contextMenus.create({
-        id: "deepshield-scan-audio",
-        title: "🛡 DeepShield: Scan this audio",
-        contexts: ["audio"],
     });
 });
 
@@ -30,8 +20,6 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (!url) return;
 
     let type = "image";
-    if (info.menuItemId === "deepshield-scan-video") type = "video";
-    if (info.menuItemId === "deepshield-scan-audio") type = "audio";
 
     // Tell the content script to trigger a scan
     chrome.tabs.sendMessage(tab.id, { type: "SCAN_CONTEXT", url });
