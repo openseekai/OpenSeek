@@ -1,5 +1,5 @@
 """
-DeepShield Configuration
+OpenSeek Configuration
 """
 import os
 
@@ -55,4 +55,4 @@ BLOCKED_IP_PREFIXES = (
 )
 
 # ─── Database ─────────────────────────────────────────────────────────────────
-DB_PATH = os.getenv("DB_PATH", "deepshield.db")
+DB_PATH = os.getenv("DB_PATH", "openseek.db")

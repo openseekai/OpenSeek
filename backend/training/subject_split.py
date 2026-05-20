@@ -1,5 +1,5 @@
 """
-DeepShield Training — Subject-Level Split
+OpenSeek Training — Subject-Level Split
 ==========================================
 Implements identity-aware data splitting that prevents the same person
 from appearing in both training and test sets (no identity leakage).

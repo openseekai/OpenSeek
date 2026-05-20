@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [Retraining Daemon] - %(message)s')
 
-DB_PATH = "../deepshield_retraining.db"
+DB_PATH = "../openseek_retraining.db"
 FALSE_NEGATIVES_DIR = "../dataset/false_negatives"
 
 def init_db():

@@ -1,5 +1,5 @@
 """
-DeepShield Training — Multimodal Fusion Model
+OpenSeek Training — Multimodal Fusion Model
 ===============================================
 Architecture: Cross-modal attention over image + video + audio embeddings
 followed by a joint classifier.

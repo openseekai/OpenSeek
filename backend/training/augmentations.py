@@ -1,5 +1,5 @@
 """
-DeepShield Training — Production Augmentation Pipeline
+OpenSeek Training — Production Augmentation Pipeline
 ========================================================
 Uses Albumentations for maximum augmentation flexibility.
 Falls back to torchvision if Albumentations is not installed.

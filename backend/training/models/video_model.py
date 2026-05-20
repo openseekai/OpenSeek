@@ -1,5 +1,5 @@
 """
-DeepShield Training — Video Detection Model
+OpenSeek Training — Video Detection Model
 =============================================
 Architecture: EfficientNet-B0 frame encoder + 4-layer Temporal Transformer
 

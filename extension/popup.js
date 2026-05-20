@@ -1,5 +1,5 @@
 /**
- * DeepShield — Popup Script
+ * OpenSeek — Popup Script
  * Loads history, shows stats, handles button actions.
  */
 

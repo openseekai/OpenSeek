@@ -1,5 +1,5 @@
 """
-DeepShield — MediaPipe-based face detector.
+OpenSeek — MediaPipe-based face detector.
 """
 from __future__ import annotations
 

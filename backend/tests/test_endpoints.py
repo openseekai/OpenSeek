@@ -1,5 +1,5 @@
 """
-DeepShield — Integration Test Suite
+OpenSeek — Integration Test Suite
 """
 from __future__ import annotations
 

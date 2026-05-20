@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# DeepShield Backend — One-shot setup script
+# OpenSeek Backend — One-shot setup script
 # Run from the backend/ directory:  bash setup.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
@@ -8,7 +8,7 @@ set -e
 VENV_DIR="venv"
 
 echo ""
-echo "=== DeepShield Backend Setup ==="
+echo "=== OpenSeek Backend Setup ==="
 echo ""
 
 # 1. Check python3 / ffmpeg

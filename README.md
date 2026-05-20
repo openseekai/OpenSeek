@@ -1,10 +1,10 @@
 <div align="center">
-  <h1>🛡️ OpenSeek (DeepShield)</h1>
+  <h1>🛡️ OpenSeek (OpenSeek)</h1>
   <p><strong>Advanced Image-Only Deepfake & AI Generation Detection Tool</strong></p>
   <br>
 </div>
 
-Welcome to **OpenSeek** (internally known as DeepShield)! This is a powerful, open-source tool designed to help you instantly detect AI-generated images and deepfakes directly in your browser. 
+Welcome to **OpenSeek** (internally known as OpenSeek)! This is a powerful, open-source tool designed to help you instantly detect AI-generated images and deepfakes directly in your browser. 
 
 Whether an image is a deepfake manipulation, created by diffusion models (like Midjourney or Stable Diffusion), or a genuine photograph, OpenSeek uses a research-grade machine learning backend to analyze the image and tell you the truth.
 

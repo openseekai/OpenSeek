@@ -1,5 +1,5 @@
 run """
-DeepShield — Dataset Verifier
+OpenSeek — Dataset Verifier
 ==============================
 Checks that the data/ folder is valid before training.
 
@@ -40,7 +40,7 @@ def verify_images(images: list[Path], label: str) -> tuple[int, list[str]]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Verify DeepShield training dataset")
+    parser = argparse.ArgumentParser(description="Verify OpenSeek training dataset")
     parser.add_argument("--data_dir", default="./data", help="Dataset root folder")
     parser.add_argument("--no_integrity", action="store_true",
                         help="Skip per-image integrity check (faster)")
@@ -51,7 +51,7 @@ def main():
     fake_dir = data_dir / "fake"
 
     print("=" * 60)
-    print("  DeepShield — Dataset Verification")
+    print("  OpenSeek — Dataset Verification")
     print("=" * 60)
 
     ok = True

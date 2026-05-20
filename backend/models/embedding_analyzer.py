@@ -39,7 +39,7 @@ class CLIPEmbeddingAnalyzer(nn.Module):
             )
             
         except Exception as e:
-            print(f"[DeepShield EmbeddingAnalyzer] Warning: CLIP loading failed: {e}")
+            print(f"[OpenSeek EmbeddingAnalyzer] Warning: CLIP loading failed: {e}")
 
     def get_embedding(self, pil_image: Image.Image):
         """Extracts the 512-dim vision feature embedding."""

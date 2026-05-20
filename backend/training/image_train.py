@@ -1,5 +1,5 @@
 """
-DeepShield — Production Image Training Script (v2)
+OpenSeek — Production Image Training Script (v2)
 ====================================================
 Model  : DualStreamImageDetector (EfficientNet-B4 + FFT Branch)
 Loss   : CombinedLoss (FocalLoss + LabelSmoothingBCE)
@@ -295,7 +295,7 @@ def _train_loop(args, device, train_loader, val_loader, test_loader,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DeepShield Image Deepfake Training v2")
+    parser = argparse.ArgumentParser(description="OpenSeek Image Deepfake Training v2")
     parser.add_argument("--data_dir",        default=None, help="Primary data dir (real/ + fake/)")
     parser.add_argument("--extra_dirs",      default=None, nargs="+", help="Extra dataset dirs (diffusion, etc.)")
     parser.add_argument("--train_dirs",      default=None, nargs="+", help="Cross-dataset train dirs")

@@ -1,5 +1,5 @@
 """
-DeepShield — Master Training Orchestrator
+OpenSeek — Master Training Orchestrator
 ==========================================
 Runs the full training pipeline in sequence:
   1. Image model   (DualStream EfficientNet-B4 + FFT)
@@ -153,7 +153,7 @@ def run_fusion(args):
 
 def print_summary(results: dict):
     print(f"\n{'='*60}")
-    print("  DeepShield Training Complete — Final Summary")
+    print("  OpenSeek Training Complete — Final Summary")
     print(f"{'='*60}")
     for phase, result in results.items():
         status = "✅" if result else "⏭ Skipped"
@@ -168,7 +168,7 @@ def print_summary(results: dict):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="DeepShield — Full Training Pipeline")
+    parser = argparse.ArgumentParser(description="OpenSeek — Full Training Pipeline")
 
     # Data dirs
     parser.add_argument("--image_data",    default=None, help="Image dataset dir (real/ + fake/)")

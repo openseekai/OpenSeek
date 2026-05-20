@@ -1,5 +1,5 @@
 """
-DeepShield Training — Multi-Source Dataset Loaders
+OpenSeek Training — Multi-Source Dataset Loaders
 ====================================================
 Supports multiple deepfake datasets in a unified interface.
 Expects data in standard structure:

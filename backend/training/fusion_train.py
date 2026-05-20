@@ -1,5 +1,5 @@
 """
-DeepShield — Fusion Training Script
+OpenSeek — Fusion Training Script
 ======================================
 Model  : MultiModalFusionDetector (Cross-Modal Attention)
 Strategy: Load pretrained image/video/audio branches → freeze → train fusion head
@@ -320,7 +320,7 @@ def train_fusion(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DeepShield Fusion Training")
+    parser = argparse.ArgumentParser(description="OpenSeek Fusion Training")
     parser.add_argument("--image_data",    required=True, help="Image dataset dir")
     parser.add_argument("--video_data",    required=True, help="Video dataset dir")
     parser.add_argument("--audio_data",    required=True, help="Audio dataset dir")

@@ -18,7 +18,7 @@ from models.advanced_ensemble import AdvancedForensicEnsemble
 from utils.face_detector import get_face_detector
 
 # ── Database Cache Initialization ───────────────────────────────────────────
-DB_PATH = "deepshield_cache.db"
+DB_PATH = "openseek_cache.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -55,7 +55,7 @@ def compute_hash(file_path):
 class MediaUrlRequest(BaseModel):
     url: str
 
-app = FastAPI(title="DeepShield Ultimate Forensic Service")
+app = FastAPI(title="OpenSeek Ultimate Forensic Service")
 
 _ensemble = None
 _face_detector = None
@@ -72,17 +72,17 @@ async def startup_event():
     global _ensemble, _audio_detector, _video_processor, _face_detector
     init_db()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[DeepShield API] Loading Advanced Ensemble Pipeline on {device}…")
+    print(f"[OpenSeek API] Loading Advanced Ensemble Pipeline on {device}…")
     
     _ensemble = AdvancedForensicEnsemble(device)
     _face_detector = get_face_detector()
     
     # FP16 Optimization
     if torch.cuda.is_available():
-        print("[DeepShield API] Optimizing Models for FP16 Inference...")
+        print("[OpenSeek API] Optimizing Models for FP16 Inference...")
         _ensemble.half()
     
-    print("[DeepShield API] 🟢 Research-Grade Multi-Modal Engine Ready")
+    print("[OpenSeek API] 🟢 Research-Grade Multi-Modal Engine Ready")
 
 @app.post("/detect-image")
 async def detect_image(file: UploadFile = File(...)):
@@ -162,7 +162,7 @@ async def detect_image(file: UploadFile = File(...)):
         return response_data
 
     except Exception as e:
-        print(f"[DeepShield API] Forensic Error: {e}")
+        print(f"[OpenSeek API] Forensic Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_path):
@@ -231,7 +231,7 @@ async def analyze_image_alias(file: UploadFile = File(...)):
 async def health():
     return {
         "status": "ok",
-        "model": "Advanced DeepShield Multimodal Target",
+        "model": "Advanced OpenSeek Multimodal Target",
         "models_loaded": _ensemble is not None,
     }
 

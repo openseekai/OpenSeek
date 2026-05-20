@@ -1,5 +1,5 @@
 /**
- * DeepShield — Content Script (Floating Overlay Edition)
+ * OpenSeek — Content Script (Floating Overlay Edition)
  *
  * Works on ALL websites including Instagram Reels, TikTok, YouTube Shorts.
  * Uses position:fixed overlays — never clipped by overflow:hidden.

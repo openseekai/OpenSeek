@@ -1,5 +1,5 @@
 """
-DeepShield — Dataset Download Guide & Structure Validator
+OpenSeek — Dataset Download Guide & Structure Validator
 ==========================================================
 Provides download instructions and folder structure validation
 for all supported deepfake detection datasets.
@@ -124,7 +124,7 @@ DATASETS = {
 
 def print_guide():
     print("\n" + "=" * 70)
-    print("  DeepShield — Dataset Download Guide")
+    print("  OpenSeek — Dataset Download Guide")
     print("=" * 70)
 
     print("""
@@ -215,7 +215,7 @@ def verify_structure(data_dir: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DeepShield Dataset Guide & Validator")
+    parser = argparse.ArgumentParser(description="OpenSeek Dataset Guide & Validator")
     parser.add_argument("--guide",    action="store_true", help="Print download guide")
     parser.add_argument("--verify",   action="store_true", help="Verify folder structure")
     parser.add_argument("--data_dir", default="./data",    help="Data root directory to verify")

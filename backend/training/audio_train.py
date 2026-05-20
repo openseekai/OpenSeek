@@ -1,5 +1,5 @@
 """
-DeepShield — Production Audio Training Script (v2)
+OpenSeek — Production Audio Training Script (v2)
 ====================================================
 Model  : AudioDeepfakeDetector (2D CNN + MultiHead Attention)
 Loss   : CombinedLoss (FocalLoss + LabelSmoothing)
@@ -172,7 +172,7 @@ def train_audio(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DeepShield Audio Training v2")
+    parser = argparse.ArgumentParser(description="OpenSeek Audio Training v2")
     parser.add_argument("--data_dir",       required=True)
     parser.add_argument("--epochs",         type=int,   default=30)
     parser.add_argument("--batch_size",     type=int,   default=32)

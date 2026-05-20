@@ -46,12 +46,12 @@ class ForensicEnsemble(nn.Module):
             try:
                 model.load_state_dict(torch.load(weight_path, map_location=self.device))
                 chk = self._checksum_model(model)
-                print(f"[DeepShield] ✅ {name.upper()} branch upgraded (Checksum: {chk:.4f})")
+                print(f"[OpenSeek] ✅ {name.upper()} branch upgraded (Checksum: {chk:.4f})")
             except Exception as e:
-                print(f"[DeepShield] ⚠️ Failed to load {name} weights: {e}")
+                print(f"[OpenSeek] ⚠️ Failed to load {name} weights: {e}")
         else:
             chk = self._checksum_model(model)
-            print(f"[DeepShield] ℹ️ {name.upper()} branch using base weights (Checksum: {chk:.4f})")
+            print(f"[OpenSeek] ℹ️ {name.upper()} branch using base weights (Checksum: {chk:.4f})")
 
     def forward_analyze(self, image_path: str) -> dict:
         """

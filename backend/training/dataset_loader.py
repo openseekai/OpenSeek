@@ -1,5 +1,5 @@
 """
-DeepShield Training — Unified Dataset Loader
+OpenSeek Training — Unified Dataset Loader
 ==============================================
 Production-grade dataset loading for all modalities:
   - Combines multiple datasets (FF++, Celeb-DF, DFDC, ASVspoof, WaveFake)

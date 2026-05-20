@@ -1,5 +1,5 @@
 """
-DeepShield Training — Data Augmentation
+OpenSeek Training — Data Augmentation
 =========================================
 Provides:
 - ImageAugmentor   : Mixup, CutMix, JPEG compression, blur, noise, color jitter

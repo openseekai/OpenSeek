@@ -1,5 +1,5 @@
 """
-DeepShield Training — Scheduler Module
+OpenSeek Training — Scheduler Module
 ========================================
 Provides multiple LR scheduler options for production training.
 

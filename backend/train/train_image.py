@@ -1,5 +1,5 @@
 """
-DeepShield — Image Model Training Script
+OpenSeek — Image Model Training Script
 
 Usage:
   python train/train_image.py --data_dir ./data --epochs 10 --batch_size 8
@@ -149,7 +149,7 @@ def train(data_dir: str, epochs: int = 10, batch_size: int = 8, lr: float = 1e-4
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train DeepShield image model")
+    parser = argparse.ArgumentParser(description="Train OpenSeek image model")
     parser.add_argument("--data_dir", required=True, help="Folder with real/ and fake/ subfolders")
     parser.add_argument("--epochs",   type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=8)

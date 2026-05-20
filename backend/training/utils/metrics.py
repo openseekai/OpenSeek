@@ -1,5 +1,5 @@
 """
-DeepShield Training — Evaluation Metrics
+OpenSeek Training — Evaluation Metrics
 ==========================================
 Tracks: AUC, F1, Precision, Recall, Confusion Matrix, ROC Curve.
 All metrics are computed from accumulated predictions across an epoch.

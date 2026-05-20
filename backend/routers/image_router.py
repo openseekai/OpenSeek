@@ -1,5 +1,5 @@
 """
-DeepShield — POST /analyze-image  +  POST /analyze-image-data
+OpenSeek — POST /analyze-image  +  POST /analyze-image-data
 """
 import os
 import base64

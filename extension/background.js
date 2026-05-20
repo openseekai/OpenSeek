@@ -1,5 +1,5 @@
 /**
- * DeepShield — Background Service Worker (Manifest v3)
+ * OpenSeek — Background Service Worker (Manifest v3)
  * Handles: context menu, result storage, badge counter, notifications
  */
 
@@ -9,7 +9,7 @@ const BACKEND = "http://localhost:8000";
 
 chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
-        id: "deepshield-scan-image",
+        id: "openseek-scan-image",
         title: "Analyze for Deepfake",
         contexts: ["image"],
     });
@@ -55,7 +55,7 @@ function sendNotification(result) {
     chrome.notifications.create({
         type: "basic",
         iconUrl: "icons/icon128.png",
-        title: `DeepShield — ${icons[r]} ${r} Risk`,
+        title: `OpenSeek — ${icons[r]} ${r} Risk`,
         message: `Authenticity score: ${Math.round(s)}/100`,
     });
 }

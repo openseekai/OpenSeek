@@ -1,5 +1,5 @@
 """
-DeepShield — GET /health
+OpenSeek — GET /health
 """
 from fastapi import APIRouter, Request
 

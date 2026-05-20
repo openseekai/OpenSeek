@@ -1,5 +1,5 @@
 """
-DeepShield — Safe async media downloader.
+OpenSeek — Safe async media downloader.
 Enforces size limits and Content-Type validation before saving.
 """
 import socket

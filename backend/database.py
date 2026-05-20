@@ -1,5 +1,5 @@
 """
-DeepShield — Async SQLite detection logger.
+OpenSeek — Async SQLite detection logger.
 """
 import aiosqlite
 from datetime import datetime, timezone

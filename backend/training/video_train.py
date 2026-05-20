@@ -1,5 +1,5 @@
 """
-DeepShield — Production Video Training Script (v2)
+OpenSeek — Production Video Training Script (v2)
 ====================================================
 Model  : TemporalTransformerDetector (EfficientNet-B0 + 4-layer Transformer)
 Loss   : CombinedLoss (FocalLoss + LabelSmoothing)
@@ -188,7 +188,7 @@ def train_video(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DeepShield Video Training v2")
+    parser = argparse.ArgumentParser(description="OpenSeek Video Training v2")
     parser.add_argument("--data_dir",       required=True)
     parser.add_argument("--epochs",         type=int,   default=30)
     parser.add_argument("--batch_size",     type=int,   default=4)

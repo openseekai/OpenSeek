@@ -4,7 +4,7 @@ from albumentations.pytorch import ToTensorV2
 
 """
 Adversarial Robustness Training Pipeline
-Ensures DeepShield is robust to spatial and frequency manipulations
+Ensures OpenSeek is robust to spatial and frequency manipulations
 caused by social media compression (Instagram/WhatsApp re-encoding).
 """
 

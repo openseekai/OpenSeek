@@ -1,5 +1,5 @@
 """
-DeepShield Training — Image Detection Model
+OpenSeek Training — Image Detection Model
 =============================================
 Architecture: EfficientNet-B4 (spatial) + FFT Frequency Branch
 Combined into a dual-stream classifier.

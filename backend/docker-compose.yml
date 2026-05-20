@@ -1,17 +1,17 @@
 version: "3.9"
 
 services:
-  deepshield-backend:
+  openseek-backend:
     build: .
-    image: deepshield-backend:latest
-    container_name: deepshield-api
+    image: openseek-backend:latest
+    container_name: openseek-api
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
-      - deepshield-data:/app/data   # SQLite persistence
+      - openseek-data:/app/data   # SQLite persistence
     environment:
-      - DB_PATH=/app/data/deepshield.db
+      - DB_PATH=/app/data/openseek.db
       - DEBUG=false
     healthcheck:
       test: ["CMD", "python", "-c",
@@ -27,5 +27,5 @@ services:
           memory: 4G
 
 volumes:
-  deepshield-data:
+  openseek-data:
     driver: local

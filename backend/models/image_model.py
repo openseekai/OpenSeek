@@ -1,5 +1,5 @@
 """
-DeepShield — Image Deepfake Detection Model (HuggingFace ViT + Heuristic Ensemble)
+OpenSeek — Image Deepfake Detection Model (HuggingFace ViT + Heuristic Ensemble)
 
 Detection pipeline (in order of priority):
   1. HuggingFace pre-trained ViT  — Various models (Wvolf/ViT, dima806/deepfake_vs_real)
@@ -175,7 +175,7 @@ def load_image_model() -> None:
     for hf_id in _HF_MODELS:
         try:
             name = hf_id.split('/')[-1]
-            print(f"[DeepShield] Loading {name} detector…")
+            print(f"[OpenSeek] Loading {name} detector…")
             pipe = pipeline(
                 "image-classification",
                 model=hf_id,
@@ -183,27 +183,27 @@ def load_image_model() -> None:
                 device=-1 if _device.type == 'cpu' else 0
             )
             _classifiers[name] = pipe
-            print(f"[DeepShield] ✅ {name} added to ensemble")
+            print(f"[OpenSeek] ✅ {name} added to ensemble")
         except Exception as e:
-            print(f"[DeepShield] Failed to load {hf_id}: {e}")
+            print(f"[OpenSeek] Failed to load {hf_id}: {e}")
 
     # 2. Load Internal Spectral model
     try:
-        print("[DeepShield] Initializing Spectral-Aware Backbone…")
+        print("[OpenSeek] Initializing Spectral-Aware Backbone…")
         _eff_model = DeepfakeImageDetector().to(_device)
         _eff_model.eval()
-        print("[DeepShield] ✅ Master Spectral Algorithm Ready")
+        print("[OpenSeek] ✅ Master Spectral Algorithm Ready")
     except Exception as e:
-        print(f"[DeepShield] Spectral init failed: {e}")
+        print(f"[OpenSeek] Spectral init failed: {e}")
         _eff_model = None
     if os.path.exists(_CUSTOM_WEIGHTS):
         try:
             _eff_model.load_state_dict(torch.load(_CUSTOM_WEIGHTS, map_location=_device))
-            print(f"[DeepShield] ✅ Custom weights loaded from {_CUSTOM_WEIGHTS}")
+            print(f"[OpenSeek] ✅ Custom weights loaded from {_CUSTOM_WEIGHTS}")
         except:
-            print("[DeepShield] ⚠️ Custom weights failed, using ImageNet fallback")
+            print("[OpenSeek] ⚠️ Custom weights failed, using ImageNet fallback")
     else:
-        print("[DeepShield] ⚠️ No deepfake model loaded. Run train/train_image.py for accuracy.")
+        print("[OpenSeek] ⚠️ No deepfake model loaded. Run train/train_image.py for accuracy.")
     _eff_model.eval()
 
 # ─── Public API ───────────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ def analyze_image(image_path: str) -> dict:
                 fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["fake", "deepfake", "synthetic"])), None)
                 if fake_res: m_results[name] = float(fake_res['score'])
             except Exception as e:
-                print(f"[DeepShield] Expert sub-model error: {e}")
+                print(f"[OpenSeek] Expert sub-model error: {e}")
         
     # ── Branch B: Internal Spectral Model (FFT-Aware) ──
     spectral_score = 0.5
@@ -237,7 +237,7 @@ def analyze_image(image_path: str) -> dict:
             with torch.no_grad():
                 spectral_score = float(_eff_model(inp).cpu().item())
         except Exception as e:
-            print(f"[DeepShield] Spectral inference error: {e}")
+            print(f"[OpenSeek] Spectral inference error: {e}")
 
     # ── Branch C: Master Consensus Logic ──
     if m_results:

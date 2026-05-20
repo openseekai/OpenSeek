@@ -6,7 +6,7 @@ import uuid
 import tqdm
 
 """
-DeepShield Advanced Synthetic Dataset Prepper
+OpenSeek Advanced Synthetic Dataset Prepper
 Specifically targets downloading and organizing Text-to-Image (T2I) outputs
 including Midjourney, DALL-E 3, and Stable Diffusion to train the Phase 8 models.
 """
@@ -57,14 +57,14 @@ def pull_dataset(source_name, count: int, dest_dir: str):
     print(f"[*] {source_name} complete: {successes}/{count} pulled.\n")
 
 def main():
-    parser = argparse.ArgumentParser(description="Prepare Advanced Datasets for DeepShield Phase 8")
+    parser = argparse.ArgumentParser(description="Prepare Advanced Datasets for OpenSeek Phase 8")
     parser.add_argument("--count", type=int, default=1000, help="Number of images per category to pull")
     parser.add_argument("--output_dir", type=str, default="../data/raw/", help="Destination directory")
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
     
-    print(f"=== DeepShield Phase 8 Dataset Prepper ===")
+    print(f"=== OpenSeek Phase 8 Dataset Prepper ===")
     print(f"Targeting: Midjourney, DALL-E, Stable Diffusion\n")
     
     for category in DATASET_SOURCES.keys():

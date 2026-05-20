@@ -1,5 +1,5 @@
 """
-DeepShield Training — Loss Functions
+OpenSeek Training — Loss Functions
 =====================================
 - FocalLoss         : Handles class imbalance (gamma=2, alpha=0.75)
 - LabelSmoothingBCE : Prevents overconfident binary predictions (smoothing=0.1)

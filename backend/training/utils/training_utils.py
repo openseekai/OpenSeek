@@ -1,5 +1,5 @@
 """
-DeepShield Training — Training Utilities
+OpenSeek Training — Training Utilities
 ==========================================
 Provides:
 - WarmupCosineScheduler   : 5-epoch linear warmup + cosine annealing

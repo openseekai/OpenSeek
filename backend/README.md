@@ -1,7 +1,7 @@
-# DeepShield — Deepfake Detection Backend
+# OpenSeek — Deepfake Detection Backend
 
 > Real-time AI-powered deepfake detection for images, videos, and audio.  
-> Built for the **DeepShield Chrome Extension** hackathon project.
+> Built for the **OpenSeek Chrome Extension** hackathon project.
 
 ---
 
@@ -73,7 +73,7 @@ docker compose up --build
 docker compose down
 ```
 
-The SQLite database is persisted in a Docker volume (`deepshield-data`).
+The SQLite database is persisted in a Docker volume (`openseek-data`).
 
 ---
 
@@ -182,13 +182,13 @@ Copy `.env.example` → `.env` and adjust:
 |---|---|---|
 | `PORT` | `8000` | Server port |
 | `DEBUG` | `false` | Enable debug mode |
-| `DB_PATH` | `deepshield.db` | SQLite database path |
+| `DB_PATH` | `openseek.db` | SQLite database path |
 
 ---
 
 ## 📝 Detection Logging
 
-Every request is logged to SQLite (`deepshield.db`):
+Every request is logged to SQLite (`openseek.db`):
 
 ```sql
 CREATE TABLE detections (

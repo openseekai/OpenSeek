@@ -1,5 +1,5 @@
 """
-DeepShield Training — Audio Detection Model
+OpenSeek Training — Audio Detection Model
 =============================================
 Architecture: 2D CNN Encoder on Log-Mel+MFCC+Chroma spectrogram + Multi-Head Attention
 

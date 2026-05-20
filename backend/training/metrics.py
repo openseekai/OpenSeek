@@ -1,5 +1,5 @@
 """
-DeepShield Training — Standalone Metrics Module
+OpenSeek Training — Standalone Metrics Module
 =================================================
 Top-level alias for training.utils.metrics with additional
 TensorBoard integration helpers.

@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 """
 Phase 11: Real Training Pipeline (Engine Fuel)
-This file dictates how DeepShield model architectures are fundamentally trained on heavily augmented
+This file dictates how OpenSeek model architectures are fundamentally trained on heavily augmented
 diffusion generators to actually identify subtle structural frequency deviations.
 """
 
@@ -219,7 +219,7 @@ def train_diffusion_model(data_dir="../dataset", num_epochs=15, batch_size=32):
         if acc > best_val_acc:
             best_val_acc = acc
             best_model_wts = copy.deepcopy(model.state_dict())
-            torch.save(model.state_dict(), "deepshield_diffusion_b2.pth")
+            torch.save(model.state_dict(), "openseek_diffusion_b2.pth")
             print(">>> Saved new best model weights! <<<")
             
     # 8. Threshold Calibration

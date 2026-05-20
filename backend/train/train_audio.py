@@ -1,5 +1,5 @@
 """
-DeepShield — Audio Model Training Script
+OpenSeek — Audio Model Training Script
 
 Usage:
   python train/train_audio.py --data_dir ./data --epochs 20 --batch_size 16

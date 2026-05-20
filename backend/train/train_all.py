@@ -1,5 +1,5 @@
 """
-DeepShield — Unified Training Orchestrator
+OpenSeek — Unified Training Orchestrator
 ===========================================
 Trains all 3 forensic branches (Spatial, Frequency, Noise) in sequence,
 then summarises per-branch accuracy.
@@ -302,7 +302,7 @@ def train_branch(
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Train all DeepShield forensic branches")
+    parser = argparse.ArgumentParser(description="Train all OpenSeek forensic branches")
     parser.add_argument("--data_dir",   required=True, help="Folder with real/ and fake/ subfolders")
     parser.add_argument("--epochs",     type=int,   default=20)
     parser.add_argument("--batch_size", type=int,   default=16)
@@ -323,7 +323,7 @@ def main():
         sys.exit(1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"\n[DeepShield Trainer] Device: {device}")
+    print(f"\n[OpenSeek Trainer] Device: {device}")
     if device.type == "cpu":
         print("  ⚠ CPU training is slow. Expect ~30–60 min per epoch for 5000 images.")
         print("  Consider using a GPU (CUDA) machine for full training.")

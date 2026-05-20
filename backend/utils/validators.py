@@ -1,5 +1,5 @@
 """
-DeepShield — Input validation helpers.
+OpenSeek — Input validation helpers.
 """
 import re
 from urllib.parse import urlparse
