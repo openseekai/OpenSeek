@@ -29,5 +29,14 @@ try:
 except Exception:
     models.efficientnet_b0(pretrained=False)
 
+# 5. Hugging Face Expert Classifier: prithivMLmods/Deep-Fake-Detector-v2-Model
+print("[OpenSeek Build] Downloading Hugging Face Deep-Fake-Detector-v2-Model...")
+from transformers import pipeline
+try:
+    pipeline("image-classification", model="prithivMLmods/Deep-Fake-Detector-v2-Model")
+except Exception as e:
+    print(f"[OpenSeek Build] Warning: Failed to pre-download Hugging Face model: {e}")
+
 print("[OpenSeek Build] All model weights pre-downloaded successfully!")
+
 

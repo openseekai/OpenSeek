@@ -95,6 +95,20 @@ class AdvancedForensicEnsemble(nn.Module):
         # 4. CLIP Embedding Analyzer (Clustering)
         self.embedding_analyzer = CLIPEmbeddingAnalyzer(device=self.device)
         
+        # 5. Hugging Face Expert Classifier (accurate pre-trained deepfake model)
+        self.hf_model = None
+        try:
+            from transformers import pipeline
+            self.hf_model = pipeline(
+                "image-classification",
+                model="prithivMLmods/Deep-Fake-Detector-v2-Model",
+                top_k=None,
+                device=-1 if self.device == 'cpu' else 0
+            )
+            print("[OpenSeek] ✅ Loaded pre-trained HuggingFace Deepfake ViT model")
+        except Exception as e:
+            print(f"[OpenSeek] Warning: Failed to load HuggingFace Expert model: {e}")
+        
         # Calibration
         self.calibrator = TemperatureScaling()
         self.calibrator.to(self.device)
@@ -247,6 +261,17 @@ class AdvancedForensicEnsemble(nn.Module):
             heatmap_base64 = self.calculate_gradcam(input_tensor, original_img_cv)
             input_tensor.requires_grad = False
 
+        # Run Hugging Face expert model inference (if loaded)
+        hf_probability = None
+        if self.hf_model:
+            try:
+                out = self.hf_model(img)
+                fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["fake", "deepfake", "synthetic"])), None)
+                if fake_res:
+                    hf_probability = float(fake_res['score'])
+            except Exception as e:
+                print(f"[OpenSeek] HuggingFace expert model inference error: {e}")
+
         with torch.no_grad():
             freq_tensor = self._get_fft_magnitude(original_img_cv)
             
@@ -268,11 +293,14 @@ class AdvancedForensicEnsemble(nn.Module):
                     patch_prob, manipulated_count = 0.0, 0
 
                 # Rebalanced Formula: Photograph
-                base_score = (0.50 * spatial_prob) + (0.30 * freq_prob) + (0.20 * embedding_dist_score)
+                if hf_probability is not None:
+                    base_score = (0.75 * hf_probability) + (0.15 * freq_prob) + (0.10 * embedding_dist_score)
+                else:
+                    base_score = (0.50 * spatial_prob) + (0.30 * freq_prob) + (0.20 * embedding_dist_score)
                 # Sensor verify reduces AI score if authentic PRNU found
                 ai_probability = max(0.0, base_score - (0.40 * authentic_prnu_prob))
                 
-                model_probs = [spatial_prob, freq_prob, (1.0 - authentic_prnu_prob), embedding_dist_score]
+                model_probs = [hf_probability if hf_probability is not None else spatial_prob, freq_prob, (1.0 - authentic_prnu_prob), embedding_dist_score]
                 variance = np.var(model_probs)
                 confidence_score = max(0.0, 1.0 - (variance * 4))
                 
@@ -297,9 +325,16 @@ class AdvancedForensicEnsemble(nn.Module):
                     patch_prob, manipulated_count = 0.0, 0
                 
                 # Rebalanced Formula: Illustration
-                ai_probability = (0.50 * diffusion_score) + (0.25 * embedding_dist_score) + (0.25 * freq_prob)
+                if hf_probability is not None:
+                    ai_probability = (0.75 * hf_probability) + (0.15 * embedding_dist_score) + (0.10 * freq_prob)
+                    if ai_probability > 0.5:
+                        predicted_class = "Diffusion_AI"
+                    else:
+                        predicted_class = "Real"
+                else:
+                    ai_probability = (0.50 * diffusion_score) + (0.25 * embedding_dist_score) + (0.25 * freq_prob)
                 
-                model_probs = [diffusion_score, freq_prob, embedding_dist_score]
+                model_probs = [hf_probability if hf_probability is not None else diffusion_score, freq_prob, embedding_dist_score]
                 variance = np.var(model_probs)
                 confidence_score = max(0.0, 1.0 - (variance * 3))
         
