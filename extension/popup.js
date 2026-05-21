@@ -79,6 +79,7 @@ function renderHistory(history) {
         let cType = h.content_type || "Photograph";
         let pClass = h.predicted_class || (h.risk_level === "High" ? "AI" : "Real");
         let scoreStr = h.ai_probability ? Math.round(h.ai_probability * 100) : Math.round(h.score || 0);
+        let displayClass = pClass.includes("AI") ? "AI" : pClass.replace("_", " ");
 
         item.innerHTML = `
       <div style="display:flex; justify-content: space-between; align-items: center; width:100%; margin-bottom: 4px;">    
@@ -86,7 +87,7 @@ function renderHistory(history) {
         <span class="history-type">${typeEmoji(h.type)} ${h.type}</span>
       </div>
       <div style="font-size:0.85em; color:#fff; opacity:0.8; text-align:left; margin-bottom: 2px;">
-         [${cType}] → <strong>${pClass.replace("_", " ")}</strong>
+         [${cType}] → <strong>${displayClass}</strong>
       </div>
       <div style="display:flex; justify-content:space-between; width:100%; font-size:0.8em; opacity: 0.6;">
         <span class="history-url" title="${h.url}">${shortUrl(h.url)}</span>

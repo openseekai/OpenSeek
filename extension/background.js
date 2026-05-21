@@ -22,7 +22,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     let type = "image";
 
     // Tell the content script to trigger a scan
-    chrome.tabs.sendMessage(tab.id, { type: "SCAN_CONTEXT", url });
+    chrome.tabs.sendMessage(tab.id, { type: "SCAN_CONTEXT", url }).catch((err) => {
+        console.warn("OpenSeek: Content script not loaded in this tab yet", err);
+    });
 
     // Also do it from the background directly and show notification result
     await analyzeAndNotify(url, type, tab.id);
@@ -78,8 +80,12 @@ async function storeResult(result, url) {
     await chrome.storage.local.set({ history: history.slice(0, 50) });
 
     // Update badge on the extension icon
-    const counts = { Low: 0, Medium: 0, High: 0, ...{} };
-    history.slice(0, 10).forEach(h => counts[h.risk_level]++);
+    const counts = { Low: 0, Medium: 0, High: 0, Uncertain: 0 };
+    history.slice(0, 10).forEach(h => {
+        if (h && h.risk_level) {
+            counts[h.risk_level] = (counts[h.risk_level] || 0) + 1;
+        }
+    });
     if (counts.High > 0) {
         chrome.action.setBadgeText({ text: String(counts.High) });
         chrome.action.setBadgeBackgroundColor({ color: "#e53935" });
@@ -96,7 +102,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     if (msg.type === "SHOW_DETAIL") {
         chrome.storage.session.set({ activeDetail: msg });
-        chrome.action.openPopup?.();
+        chrome.action.openPopup?.().catch((err) => {
+            console.warn("OpenSeek: Cannot open popup programmatically", err);
+        });
     }
 
     // DO_SCAN_FILE: version that handles multi-part form data uploads

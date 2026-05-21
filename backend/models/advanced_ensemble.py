@@ -97,17 +97,21 @@ class AdvancedForensicEnsemble(nn.Module):
         
         # 5. Hugging Face Expert Classifier (accurate pre-trained deepfake model)
         self.hf_model = None
-        try:
-            from transformers import pipeline
-            self.hf_model = pipeline(
-                "image-classification",
-                model="prithivMLmods/Deep-Fake-Detector-v2-Model",
-                top_k=None,
-                device=-1 if self.device == 'cpu' else 0
-            )
-            print("[OpenSeek] ✅ Loaded pre-trained HuggingFace Deepfake ViT model")
-        except Exception as e:
-            print(f"[OpenSeek] Warning: Failed to load HuggingFace Expert model: {e}")
+        import os
+        if os.environ.get("LOW_MEMORY") == "1":
+            print("[OpenSeek] ℹ️ Running in LOW_MEMORY mode: skipped HuggingFace Deepfake ViT model")
+        else:
+            try:
+                from transformers import pipeline
+                self.hf_model = pipeline(
+                    "image-classification",
+                    model="prithivMLmods/Deep-Fake-Detector-v2-Model",
+                    top_k=None,
+                    device=-1 if self.device == 'cpu' else 0
+                )
+                print("[OpenSeek] ✅ Loaded pre-trained HuggingFace Deepfake ViT model")
+            except Exception as e:
+                print(f"[OpenSeek] Warning: Failed to load HuggingFace Expert model: {e}")
         
         # Calibration
         self.calibrator = TemperatureScaling()

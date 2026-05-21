@@ -71,6 +71,12 @@ app.add_middleware(
 async def startup_event():
     global _ensemble, _audio_detector, _video_processor, _face_detector
     init_db()
+    
+    # Optimize PyTorch memory usage on CPU (reduces thread-related RAM overhead)
+    import torch
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[OpenSeek API] Loading Advanced Ensemble Pipeline on {device}…")
     
@@ -81,6 +87,10 @@ async def startup_event():
     if torch.cuda.is_available():
         print("[OpenSeek API] Optimizing Models for FP16 Inference...")
         _ensemble.half()
+        
+    # Free up memory allocated during loading
+    import gc
+    gc.collect()
     
     print("[OpenSeek API] 🟢 Research-Grade Multi-Modal Engine Ready")
 

@@ -101,7 +101,9 @@ async function scan(el) {
             const result = data;
 
             results.set(url, result);
-            chrome.runtime.sendMessage({ type: "RESULT", result, url });
+            await chrome.runtime.sendMessage({ type: "RESULT", result, url }).catch(err => {
+                console.warn("OpenSeek: Could not store result in history:", err.message);
+            });
             renderResult(el, result);
             scanning--;
             return;
@@ -111,7 +113,9 @@ async function scan(el) {
                 body: { url },
             });
             results.set(url, data);
-            chrome.runtime.sendMessage({ type: "RESULT", result: data, url });
+            await chrome.runtime.sendMessage({ type: "RESULT", result: data, url }).catch(err => {
+                console.warn("OpenSeek: Could not store result in history:", err.message);
+            });
             renderResult(el, data);
         }
     } catch (e) {
@@ -166,13 +170,14 @@ function renderResult(el, result) {
     // Fallbacks for older cached scans
     const cType = result.content_type || "Photograph";
     const pClass = result.predicted_class || (r === "High" ? "Deepfake_AI" : "Real");
+    const displayClass = pClass.includes("AI") ? "AI" : pClass.replace("_", " ");
 
     const badge = createOverlayEl(
         `ds-result-overlay ${cls}`,
         `
         <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
             <div>${icon} <strong>Risk: ${r}</strong> (${s}%)</div>
-            <div style="font-size:0.85em; opacity:0.9;">Detected: <em>${pClass.replace("_", " ")}</em></div>
+            <div style="font-size:0.85em; opacity:0.9;">Detected: <em>${displayClass}</em></div>
         </div>
         `
     );
@@ -238,7 +243,7 @@ new MutationObserver(muts => {
     muts.forEach(m => {
         m.addedNodes.forEach(processNode);
         if (m.type === "attributes") processNode(m.target);
-        
+
         m.removedNodes.forEach(node => {
             if (!(node instanceof Element)) return;
             const imgs = node.tagName === "IMG" ? [node] : [];
