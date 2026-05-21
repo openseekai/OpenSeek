@@ -187,7 +187,16 @@ function renderResult(el, result) {
 
 /* ─── Attach scan button ────────────────────────────────────────────────── */
 function attach(el) {
-    if (seen.has(el)) return;
+    const currentUrl = getRealUrl(el);
+    const state = seen.get(el);
+    if (state) {
+        if (state.lastUrl !== currentUrl) {
+            state.badge?.remove();
+            state.badge = null;
+            state.lastUrl = currentUrl;
+        }
+        return;
+    }
 
     if (el.tagName === "IMG") {
         const src = el.getAttribute("src") || el.src || "";
@@ -199,7 +208,7 @@ function attach(el) {
     const w = rect.width || el.offsetWidth || el.clientWidth;
     if (w > 0 && w < MIN_SIZE) return;
 
-    seen.set(el, { btn: null, badge: null });
+    seen.set(el, { btn: null, badge: null, lastUrl: currentUrl });
 
     const updatePos = () => {
         const r = el.getBoundingClientRect();
@@ -229,6 +238,19 @@ new MutationObserver(muts => {
     muts.forEach(m => {
         m.addedNodes.forEach(processNode);
         if (m.type === "attributes") processNode(m.target);
+        
+        m.removedNodes.forEach(node => {
+            if (!(node instanceof Element)) return;
+            const imgs = node.tagName === "IMG" ? [node] : [];
+            node.querySelectorAll("img").forEach(i => imgs.push(i));
+            imgs.forEach(img => {
+                const state = seen.get(img);
+                if (state?.badge) {
+                    state.badge.remove();
+                    state.badge = null;
+                }
+            });
+        });
     });
 }).observe(document.body, {
     childList: true,
