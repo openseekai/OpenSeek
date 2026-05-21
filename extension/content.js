@@ -76,11 +76,11 @@ async function scan(el) {
     try {
         if (type === "image") {
             const base64 = await toBase64(url);
-            
+
             // Convert base64 to Blob directly
             const blobResp = await fetch(base64);
             const blob = await blobResp.blob();
-            
+
             const formData = new FormData();
             formData.append("file", blob, url.split("/").pop().split("?")[0] || "scan.jpg");
 
