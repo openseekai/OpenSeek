@@ -265,7 +265,8 @@ class AdvancedForensicEnsemble(nn.Module):
         hf_probability = None
         if self.hf_model:
             try:
-                out = self.hf_model(img)
+                with torch.no_grad():
+                    out = self.hf_model(img)
                 fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["fake", "deepfake", "synthetic"])), None)
                 if fake_res:
                     hf_probability = float(fake_res['score'])

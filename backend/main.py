@@ -173,8 +173,8 @@ async def analyze_image_data(req: MediaUrlRequest):
         cached = get_cached_result(file_hash)
         if cached: return cached
 
-        # Full Image Analysis
-        full_res = _ensemble.forward_analyze(temp_path)
+        # Full Image Analysis (fast mode: skip Grad-CAM + patch scan)
+        full_res = _ensemble.forward_analyze(temp_path, fast=True)
         
         # Respect new risk level logic
         ai_probability = full_res["ai_probability"]
