@@ -109,7 +109,11 @@ You need Python 3.10+ installed on your computer.
    ```bash
    pip install -r requirements.txt
    ```
-4. Start the server!
+4. Pre-download the HuggingFace and local models:
+   ```bash
+   python download_models.py
+   ```
+5. Start the server!
    ```bash
    uvicorn main:app --reload --port 8000
    ```
@@ -151,25 +155,45 @@ OpenSeek/
 
 ---
 
-## 🔌 API Endpoint
+## 🔌 API Endpoints
 
-If you want to integrate OpenSeek into your own app, you can use the backend directly!
+If you want to integrate OpenSeek into your own application, you can request the endpoints directly:
 
-**POST** `/analyze-image`
-- **Payload (Form Data)**: `file` (The image file to upload)
-- **Response**:
+### 1. File Upload (Multipart Form)
+**POST** `/detect-image` (or `/analyze-image` alias)
+* **Payload**: `file` (The image file to upload)
+* **Response**:
 ```json
 {
-  "status": "success",
-  "result": {
-    "is_deepfake": true,
-    "confidence_score": 0.98,
-    "risk_level": "High Risk",
-    "details": {
-      "face_detected": true,
-      "model_version": "v1.2"
-    }
-  }
+  "is_ai_generated": true,
+  "ai_probability": 0.985,
+  "content_type": "Photograph",
+  "predicted_class": "Deepfake_AI",
+  "confidence_score": 0.91,
+  "risk_level": "High",
+  "manipulated_regions_heatmap": "",
+  "patch_manipulated_count": 0,
+  "embedding_anomaly_score": 0.045,
+  "face_detected": true
+}
+```
+
+### 2. URL Scan (JSON)
+**POST** `/analyze-image-data`
+* **Payload**: `{ "url": "https://example.com/suspect.jpg" }`
+* **Response**:
+```json
+{
+  "is_ai_generated": true,
+  "ai_probability": 0.985,
+  "content_type": "Photograph",
+  "predicted_class": "Deepfake_AI",
+  "confidence_score": 0.91,
+  "risk_level": "High",
+  "manipulated_regions_heatmap": "",
+  "patch_manipulated_count": 0,
+  "embedding_anomaly_score": 0.045,
+  "face_detected": true
 }
 ```
 
