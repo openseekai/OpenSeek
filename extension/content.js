@@ -172,7 +172,6 @@ function renderResult(el, result) {
         `
         <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
             <div>${icon} <strong>Risk: ${r}</strong> (${s}%)</div>
-            <div style="font-size:0.85em; opacity:0.9;">Type: <em>${cType}</em></div>
             <div style="font-size:0.85em; opacity:0.9;">Detected: <em>${pClass.replace("_", " ")}</em></div>
         </div>
         `
