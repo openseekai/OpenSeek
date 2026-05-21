@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "OpenSeek — Deepfake Detector",
     "version": "1.0.0",
-    "description": "Real-time deepfake detection for images, videos, and audio on any website.",
+    "description": "Real-time deepfake detection for images on any website.",
     "permissions": [
         "activeTab",
         "contextMenus",
