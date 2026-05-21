@@ -10,7 +10,7 @@
         "notifications"
     ],
     "host_permissions": [
-        "https://openseek-763952043156.europe-west1.run.app/*",
+        "https://openseek-production.up.railway.app/*",
         "<all_urls>"
     ],
     "background": {

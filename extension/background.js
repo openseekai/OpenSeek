@@ -3,7 +3,7 @@
  * Handles: context menu, result storage, badge counter, notifications
  */
 
-const BACKEND = "https://openseek-763952043156.europe-west1.run.app";
+const BACKEND = "https://openseek-production.up.railway.app";
 
 /* ─── Context menu ─────────────────────────────────────────────────────────── */
 

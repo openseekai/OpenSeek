@@ -3,7 +3,7 @@
  * Loads history, shows stats, handles button actions.
  */
 
-const BACKEND = "https://openseek-763952043156.europe-west1.run.app";
+const BACKEND = "https://openseek-production.up.railway.app";
 
 /* ─── DOM refs ─────────────────────────────────────────────────────────────── */
 const dot = document.getElementById("dot");
