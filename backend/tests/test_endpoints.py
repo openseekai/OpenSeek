@@ -18,17 +18,14 @@ def client():
     # Build lightweight stub objects that satisfy main.py's interface
     fake_ensemble = MagicMock()
     fake_ensemble.forward_analyze.return_value = {
-        "final_probability": 42.0,
+        "ai_probability": 0.15,
         "is_ai_generated": False,
-        "detected_type": "authentic",
-        "confidence": 35.0,
-        "scores": {
-            "spatial": 0.40,
-            "frequency": 0.38,
-            "noise": 0.41,
-            "metadata": 0.10,
-        },
-        "patch_peak": 0.25,
+        "confidence_score": 0.85,
+        "content_type": "Photograph",
+        "predicted_class": "Real",
+        "manipulated_regions_heatmap": "",
+        "patch_manipulated_count": 0,
+        "embedding_anomaly_score": 0.05,
     }
 
     fake_video_detector = MagicMock()
@@ -46,11 +43,15 @@ def client():
     fake_processor.extract_frames.return_value = torch.zeros(8, 3, 224, 224)
     fake_processor.extract_audio.return_value = False
 
+    fake_face_detector = MagicMock()
+    fake_face_detector.detect.return_value = []
+
     with (
-        patch("main._ensemble", fake_ensemble),
-        patch("main._video_detector", fake_video_detector),
-        patch("main._audio_detector", fake_audio_detector),
-        patch("main._video_processor", fake_processor),
+        patch("main._ensemble", fake_ensemble, create=True),
+        patch("main._face_detector", fake_face_detector, create=True),
+        patch("main._video_detector", fake_video_detector, create=True),
+        patch("main._audio_detector", fake_audio_detector, create=True),
+        patch("main._video_processor", fake_processor, create=True),
     ):
         from main import app
         yield TestClient(app, raise_server_exceptions=False)

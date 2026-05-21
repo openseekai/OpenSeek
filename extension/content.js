@@ -98,19 +98,7 @@ async function scan(el) {
 
             const data = await apiResp.json();
 
-            const lowerUrl = url.toLowerCase();
-            const pageUrl = window.location.href.toLowerCase();
-            const isAiSearch = pageUrl.includes('ai') || pageUrl.includes('generated');
-            const isAiImage = lowerUrl.includes('ai') || lowerUrl.includes('generated') || lowerUrl.includes('midjourney') || lowerUrl.includes('dalle');
-
-            let result;
-            if (isAiSearch || isAiImage) {
-                const s = Math.round((75 + Math.random() * 25) * 10) / 10;
-                result = { ...data, authenticity_score: s, risk_level: "High", is_ai_generated: true, content_type: "Illustration", predicted_class: "Diffusion_AI" };
-            } else {
-                const s = Math.round((10 + Math.random() * 20) * 10) / 10;
-                result = { ...data, authenticity_score: s, risk_level: "Low", is_ai_generated: false, content_type: "Photograph", predicted_class: "Real" };
-            }
+            const result = data;
 
             results.set(url, result);
             chrome.runtime.sendMessage({ type: "RESULT", result, url });

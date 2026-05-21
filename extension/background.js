@@ -32,7 +32,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
 async function analyzeAndNotify(url, type, tabId) {
     try {
-        const resp = await fetch(`${BACKEND}/analyze-${type}`, {
+        const resp = await fetch(`${BACKEND}/analyze-image-data`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url }),
@@ -50,7 +50,7 @@ async function analyzeAndNotify(url, type, tabId) {
 
 function sendNotification(result) {
     const r = result.risk_level || "Low";
-    const s = result.authenticity_score ?? 0;
+    const s = result.ai_probability ? Math.round(result.ai_probability * 100) : (result.authenticity_score ?? 0);
     const icons = { Low: "✅", Medium: "⚠️", High: "🔴" };
     chrome.notifications.create({
         type: "basic",
@@ -66,9 +66,12 @@ async function storeResult(result, url) {
     const { history = [] } = await chrome.storage.local.get("history");
     history.unshift({
         url,
-        type: result.type,
-        risk_level: result.risk_level,
-        score: result.authenticity_score,
+        type: result.type || "image",
+        risk_level: result.risk_level || "Low",
+        score: result.ai_probability ? Math.round(result.ai_probability * 100) : (result.authenticity_score ?? 0),
+        ai_probability: result.ai_probability,
+        content_type: result.content_type,
+        predicted_class: result.predicted_class,
         timestamp: Date.now(),
     });
     // Keep last 50
