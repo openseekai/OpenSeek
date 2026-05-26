@@ -558,6 +558,10 @@ async def download_extension(background_tasks: BackgroundTasks):
     extension_dir = os.path.join(base_dir, "extension")
     
     if not os.path.exists(extension_dir):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        extension_dir = os.path.join(current_dir, "extension")
+        
+    if not os.path.exists(extension_dir):
         raise HTTPException(status_code=404, detail="Extension folder not found")
         
     # Create a temporary file to hold the zip
