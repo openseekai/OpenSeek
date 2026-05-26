@@ -28,6 +28,13 @@ from user_db import (
     log_scan, get_user_history, add_credits
 )
 
+try:
+    import firebase_admin
+    from firebase_admin import auth as firebase_auth
+    HAS_FIREBASE_ADMIN = True
+except ImportError:
+    HAS_FIREBASE_ADMIN = False
+
 # ── Database Cache Initialization ───────────────────────────────────────────
 DB_PATH = "openseek_cache.db"
 
@@ -487,8 +494,7 @@ async def get_firebase_config(response: Response):
     # Initialize firebase-admin on the fly if environment variables are set and it's not initialized
     if config["projectId"] and config["apiKey"]:
         try:
-            import firebase_admin
-            if not firebase_admin._apps:
+            if HAS_FIREBASE_ADMIN and not firebase_admin._apps:
                 firebase_admin.initialize_app()
                 print("[OpenSeek API] Firebase Admin Initialized successfully.")
         except Exception as e:
@@ -501,19 +507,17 @@ async def firebase_login(req: FirebaseLoginRequest):
     email = req.email.strip().lower()
     
     # Optional verification step if firebase-admin is available
-    try:
-        import firebase_admin
-        from firebase_admin import auth as firebase_auth
-        
-        # Verify the Firebase token
-        decoded_token = firebase_auth.verify_id_token(req.id_token)
-        verified_email = decoded_token.get("email")
-        if verified_email:
-            email = verified_email.strip().lower()
-    except Exception as e:
-        # Fallback for development/offline or unconfigured firebase-admin:
-        # log warning and proceed with client-provided email
-        print(f"[OpenSeek Auth] Firebase Admin verification note: {e}")
+    if HAS_FIREBASE_ADMIN:
+        try:
+            # Verify the Firebase token
+            decoded_token = firebase_auth.verify_id_token(req.id_token)
+            verified_email = decoded_token.get("email")
+            if verified_email:
+                email = verified_email.strip().lower()
+        except Exception as e:
+            # Fallback for development/offline or unconfigured firebase-admin:
+            # log warning and proceed with client-provided email
+            print(f"[OpenSeek Auth] Firebase Admin verification note: {e}")
         
     if not email:
         raise HTTPException(status_code=400, detail="No email provided or token verification failed")
