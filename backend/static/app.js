@@ -249,29 +249,7 @@ class OpenSeekDashboard {
         }
     }
 
-    // Simulation: Add Credits
-    async simulateAddCredits() {
-        try {
-            const res = await fetch(`${API_BASE}/user/add-credits`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.token}`
-                },
-                body: JSON.stringify({ amount: 50 })
-            });
 
-            const data = await res.json();
-            if (res.ok) {
-                this.refreshCreditsUI(data.credits);
-                this.showToast("+50 Credits added to sandbox.");
-            } else {
-                this.showToast(data.detail || "Failed to add credits", true);
-            }
-        } catch (err) {
-            this.showToast("Error communicating with server.", true);
-        }
-    }
 
     // Load Scan History log
     async loadHistory() {

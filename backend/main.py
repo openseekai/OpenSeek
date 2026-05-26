@@ -392,8 +392,7 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-class AddCreditsRequest(BaseModel):
-    amount: int
+
 
 @app.post("/auth/register")
 async def register(req: RegisterRequest):
@@ -447,20 +446,7 @@ async def user_history(authorization: Optional[str] = Header(None)):
     history = get_user_history(user["id"])
     return {"history": history}
 
-@app.post("/user/add-credits")
-async def add_user_credits(req: AddCreditsRequest, authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    token = authorization.split(" ")[1]
-    user = get_user_by_session(token)
-    if not user:
-        raise HTTPException(status_code=401, detail="Session expired or invalid")
-    
-    if req.amount <= 0:
-        raise HTTPException(status_code=400, detail="Amount must be positive")
-        
-    new_balance = add_credits(user["id"], req.amount)
-    return {"status": "success", "credits": new_balance}
+
 
 # Serve Dashboard Static Site using path relative to main.py
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
