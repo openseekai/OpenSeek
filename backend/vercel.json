@@ -3,11 +3,11 @@
   "rewrites": [
     {
       "source": "/static/:path*",
-      "destination": "/backend/static/:path*"
+      "destination": "/static/:path*"
     },
     {
       "source": "/:path*",
-      "destination": "/backend/static/index.html"
+      "destination": "/static/index.html"
     }
   ]
 }
