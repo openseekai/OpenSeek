@@ -470,12 +470,12 @@ class FirebaseLoginRequest(BaseModel):
 async def get_firebase_config():
     # Attempt to load Firebase config from environment variables
     config = {
-        "apiKey": os.getenv("FIREBASE_API_KEY", ""),
-        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", ""),
-        "projectId": os.getenv("FIREBASE_PROJECT_ID", ""),
-        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET", ""),
-        "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID", ""),
-        "appId": os.getenv("FIREBASE_APP_ID", "")
+        "apiKey": os.getenv("FIREBASE_API_KEY", "").strip(),
+        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", "").strip(),
+        "projectId": os.getenv("FIREBASE_PROJECT_ID", "").strip(),
+        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET", "").strip(),
+        "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID", "").strip(),
+        "appId": os.getenv("FIREBASE_APP_ID", "").strip()
     }
     # Initialize firebase-admin on the fly if environment variables are set and it's not initialized
     if config["projectId"] and config["apiKey"]:
