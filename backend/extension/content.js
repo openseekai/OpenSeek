@@ -11,19 +11,31 @@ if (window.location.origin === "https://openseek-production.up.railway.app" ||
     window.location.origin.includes(".vercel.app") ||
     window.location.origin === "http://127.0.0.1:8000" || 
     window.location.origin === "http://localhost:8000") {
-    const token = localStorage.getItem("openseek_token");
-    if (token) {
-        let backendUrl = window.location.origin;
-        if (window.location.origin.includes(".vercel.app")) {
-            backendUrl = "https://openseek-production.up.railway.app";
-        }
-        chrome.storage.local.set({ 
-            openseek_token: token,
-            openseek_backend_url: backendUrl
+    
+    function syncToken() {
+        const token = localStorage.getItem("openseek_token");
+        chrome.storage.local.get(["openseek_token"], (res) => {
+            if (token !== res.openseek_token) {
+                if (token) {
+                    let backendUrl = "https://openseek-production.up.railway.app";
+                    if (window.location.origin === "http://127.0.0.1:8000" || window.location.origin === "http://localhost:8000") {
+                        backendUrl = window.location.origin;
+                    }
+                    chrome.storage.local.set({ 
+                        openseek_token: token,
+                        openseek_backend_url: backendUrl
+                    });
+                } else {
+                    chrome.storage.local.remove(["openseek_token", "openseek_backend_url"]);
+                }
+            }
         });
-    } else {
-        chrome.storage.local.remove(["openseek_token", "openseek_backend_url"]);
     }
+    
+    // Sync immediately on load
+    syncToken();
+    // Check every second for login/logout changes
+    setInterval(syncToken, 1000);
 }
 const MIN_SIZE = 80;
 const MAX_CONCURRENT = 3;
