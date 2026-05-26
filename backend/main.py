@@ -188,22 +188,25 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
 
     try:
         colab_url = os.getenv("COLAB_MODEL_URL") or os.getenv("EXTERNAL_MODEL_URL")
+        response_data = None
         if colab_url:
-            # Forward the file to the Google Colab URL
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                with open(temp_path, "rb") as f:
-                    files = {"file": (file.filename, f, file.content_type)}
-                    target_url = f"{colab_url.rstrip('/')}/analyze"
-                    print(f"[OpenSeek API] Forwarding image to external inference server: {target_url}")
-                    response = await client.post(target_url, files=files)
-                    
-                    if response.status_code != 200:
-                        raise HTTPException(
-                            status_code=502,
-                            detail=f"External inference server returned error {response.status_code}: {response.text}"
-                        )
-                    response_data = response.json()
-        else:
+            try:
+                # Forward the file to the Google Colab URL
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    with open(temp_path, "rb") as f:
+                        files = {"file": (file.filename, f, file.content_type)}
+                        target_url = f"{colab_url.rstrip('/')}/analyze"
+                        print(f"[OpenSeek API] Forwarding image to external inference server: {target_url}")
+                        response = await client.post(target_url, files=files)
+                        
+                        if response.status_code == 200:
+                            response_data = response.json()
+                        else:
+                            print(f"[OpenSeek API] External server returned {response.status_code}. Falling back to internal models.")
+            except Exception as e:
+                print(f"[OpenSeek API] External inference connection failed ({e}). Falling back to internal models.")
+                
+        if response_data is None:
             # 1. Full Image Analysis (fast mode: skip Grad-CAM + patch scan)
             full_res = _ensemble.forward_analyze(temp_path, fast=True)
             
@@ -321,22 +324,25 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
             return cached_res
 
         colab_url = os.getenv("COLAB_MODEL_URL") or os.getenv("EXTERNAL_MODEL_URL")
+        response_data = None
         if colab_url:
-            # Forward the downloaded file to the Google Colab URL
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                with open(temp_path, "rb") as f:
-                    files = {"file": (filename, f, "image/jpeg")}
-                    target_url = f"{colab_url.rstrip('/')}/analyze"
-                    print(f"[OpenSeek API] Forwarding fetched image to external inference server: {target_url}")
-                    response = await client.post(target_url, files=files)
-                    
-                    if response.status_code != 200:
-                        raise HTTPException(
-                            status_code=502,
-                            detail=f"External inference server returned error {response.status_code}: {response.text}"
-                        )
-                    response_data = response.json()
-        else:
+            try:
+                # Forward the downloaded file to the Google Colab URL
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    with open(temp_path, "rb") as f:
+                        files = {"file": (filename, f, "image/jpeg")}
+                        target_url = f"{colab_url.rstrip('/')}/analyze"
+                        print(f"[OpenSeek API] Forwarding fetched image to external inference server: {target_url}")
+                        response = await client.post(target_url, files=files)
+                        
+                        if response.status_code == 200:
+                            response_data = response.json()
+                        else:
+                            print(f"[OpenSeek API] External server returned status {response.status_code}. Falling back to internal models.")
+            except Exception as e:
+                print(f"[OpenSeek API] External inference connection failed ({e}). Falling back to internal models.")
+                
+        if response_data is None:
             # Full Image Analysis (fast mode: skip Grad-CAM + patch scan)
             full_res = _ensemble.forward_analyze(temp_path, fast=True)
             
