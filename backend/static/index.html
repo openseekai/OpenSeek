@@ -19,6 +19,12 @@
             <span>OpenSeek</span>
         </div>
         <div class="nav-actions">
+            <!-- Theme Toggle Button -->
+            <button class="btn btn-secondary theme-toggle-btn" id="theme-toggle" onclick="app.toggleTheme()" style="padding: 8px; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;" title="Toggle Light/Dark Theme">
+                <svg id="theme-toggle-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor;">
+                    <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>
+                </svg>
+            </button>
             <div id="header-user-info" class="user-badge hidden">
                 <span class="user-email" id="header-email">user@openseek.ai</span>
                 <span class="credits-pill">
