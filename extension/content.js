@@ -14,13 +14,13 @@ if (window.location.origin === "https://openseek-production.up.railway.app" ||
     
     function syncToken() {
         const token = localStorage.getItem("openseek_token");
-        chrome.storage.local.get(["openseek_token"], (res) => {
-            if (token !== res.openseek_token) {
+        chrome.storage.local.get(["openseek_token", "openseek_backend_url"], (res) => {
+            let backendUrl = "https://openseek-production.up.railway.app";
+            if (window.location.origin === "http://127.0.0.1:8000" || window.location.origin === "http://localhost:8000") {
+                backendUrl = window.location.origin;
+            }
+            if (token !== res.openseek_token || backendUrl !== res.openseek_backend_url) {
                 if (token) {
-                    let backendUrl = "https://openseek-production.up.railway.app";
-                    if (window.location.origin === "http://127.0.0.1:8000" || window.location.origin === "http://localhost:8000") {
-                        backendUrl = window.location.origin;
-                    }
                     chrome.storage.local.set({ 
                         openseek_token: token,
                         openseek_backend_url: backendUrl
