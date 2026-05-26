@@ -76,7 +76,52 @@ def compute_hash(file_path):
 class MediaUrlRequest(BaseModel):
     url: str
 
-app = FastAPI(title="OpenSeek Ultimate Forensic Service")
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _ensemble, _audio_detector, _video_processor, _face_detector
+    init_db()
+    init_user_db()
+    
+    # Check if we are running in tests (pytest)
+    import sys
+    if "pytest" in sys.modules or os.getenv("TESTING") == "1":
+        print("[OpenSeek API] 🧪 Test environment detected. Skipping actual model loading to keep mocks intact.")
+        yield
+        return
+
+    # Check if we are delegating inference to an external URL (Google Colab / GPU VPS)
+    colab_url = os.getenv("COLAB_MODEL_URL") or os.getenv("EXTERNAL_MODEL_URL")
+    if colab_url:
+        print(f"[OpenSeek API] 🌐 Hybrid Mode: Model inference delegated to external URL: {colab_url}")
+        yield
+        return
+    
+    # Optimize PyTorch memory usage on CPU (reduces thread-related RAM overhead)
+    import torch
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"[OpenSeek API] Loading Advanced Ensemble Pipeline on {device}…")
+    
+    _ensemble = AdvancedForensicEnsemble(device)
+    _face_detector = get_face_detector()
+    
+    # FP16 Optimization
+    if torch.cuda.is_available():
+        print("[OpenSeek API] Optimizing Models for FP16 Inference...")
+        _ensemble.half()
+        
+    # Free up memory allocated during loading
+    import gc
+    gc.collect()
+    
+    print("[OpenSeek API] 🟢 Research-Grade Multi-Modal Engine Ready")
+    yield
+
+app = FastAPI(title="OpenSeek Ultimate Forensic Service", lifespan=lifespan)
 
 import sys
 from unittest.mock import MagicMock
@@ -106,46 +151,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def startup_event():
-    global _ensemble, _audio_detector, _video_processor, _face_detector
-    init_db()
-    init_user_db()
-    
-    # Check if we are running in tests (pytest)
-    import sys
-    if "pytest" in sys.modules or os.getenv("TESTING") == "1":
-        print("[OpenSeek API] 🧪 Test environment detected. Skipping actual model loading to keep mocks intact.")
-        return
-
-    # Check if we are delegating inference to an external URL (Google Colab / GPU VPS)
-    colab_url = os.getenv("COLAB_MODEL_URL") or os.getenv("EXTERNAL_MODEL_URL")
-    if colab_url:
-        print(f"[OpenSeek API] 🌐 Hybrid Mode: Model inference delegated to external URL: {colab_url}")
-        return
-    
-    # Optimize PyTorch memory usage on CPU (reduces thread-related RAM overhead)
-    import torch
-    torch.set_num_threads(1)
-    torch.set_num_interop_threads(1)
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[OpenSeek API] Loading Advanced Ensemble Pipeline on {device}…")
-    
-    _ensemble = AdvancedForensicEnsemble(device)
-    _face_detector = get_face_detector()
-    
-    # FP16 Optimization
-    if torch.cuda.is_available():
-        print("[OpenSeek API] Optimizing Models for FP16 Inference...")
-        _ensemble.half()
-        
-    # Free up memory allocated during loading
-    import gc
-    gc.collect()
-    
-    print("[OpenSeek API] 🟢 Research-Grade Multi-Modal Engine Ready")
 
 def get_fallback_analysis_result(temp_path: str) -> dict:
     """Generates a realistic fallback analysis if local models are not loaded (saving RAM)."""
