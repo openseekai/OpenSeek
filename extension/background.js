@@ -34,9 +34,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
 async function analyzeAndNotify(url, type, tabId) {
     try {
+        const { openseek_token } = await chrome.storage.local.get("openseek_token");
+        const headers = { "Content-Type": "application/json" };
+        if (openseek_token) {
+            headers["Authorization"] = `Bearer ${openseek_token}`;
+        }
         const resp = await fetch(`${BACKEND}/analyze-image-data`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: headers,
             body: JSON.stringify({ url }),
         });
         if (!resp.ok) return;
@@ -114,12 +119,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // Convert base64 to Blob
         fetch(base64)
             .then(res => res.blob())
-            .then(blob => {
+            .then(async (blob) => {
                 const formData = new FormData();
                 formData.append("file", blob, filename);
 
+                const { openseek_token } = await chrome.storage.local.get("openseek_token");
+                const headers = {};
+                if (openseek_token) {
+                    headers["Authorization"] = `Bearer ${openseek_token}`;
+                }
+
                 return fetch(`${BACKEND}/${endpoint}`, {
                     method: "POST",
+                    headers: headers,
                     body: formData,
                 });
             })
@@ -140,10 +152,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // because service workers have unrestricted localhost access.
     if (msg.type === "DO_SCAN") {
         const { endpoint, body } = msg.payload;
-        fetch(`${BACKEND}/${endpoint}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+        chrome.storage.local.get("openseek_token").then(({ openseek_token }) => {
+            const headers = { "Content-Type": "application/json" };
+            if (openseek_token) {
+                headers["Authorization"] = `Bearer ${openseek_token}`;
+            }
+            return fetch(`${BACKEND}/${endpoint}`, {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(body),
+            });
         })
             .then(async (resp) => {
                 if (!resp.ok) {

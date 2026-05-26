@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenSeek — Deepfake Forensic Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+            </div>
+            <span>OpenSeek</span>
+        </div>
+        <div class="nav-actions">
+            <div id="header-user-info" class="user-badge hidden">
+                <span class="user-email" id="header-email">user@openseek.ai</span>
+                <span class="credits-pill">
+                    <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24">
+                        <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                    </svg>
+                    <span id="header-credits">100</span>
+                </span>
+                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="app.logout()">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+
+        <!-- 1. Authentication View -->
+        <section id="auth-section" class="auth-container glass-panel">
+            <div class="auth-intro">
+                <h2>Forensic Portal</h2>
+                <p>Sign in to scan images, log scans, and view credits.</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="app.switchAuthTab('login')">Sign In</button>
+                <button class="auth-tab" onclick="app.switchAuthTab('register')">Create Account</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active" onsubmit="app.handleLogin(event)">
+                <div class="input-group">
+                    <label for="login-email">Email Address</label>
+                    <input type="email" id="login-email" required placeholder="you@domain.com">
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Sign In to Dashboard</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form" onsubmit="app.handleRegister(event)">
+                <div class="input-group">
+                    <label for="reg-email">Email Address</label>
+                    <input type="email" id="reg-email" required placeholder="you@domain.com">
+                </div>
+                <div class="input-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" required minlength="6" placeholder="At least 6 characters">
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Create Account</button>
+            </form>
+        </section>
+
+        <!-- 2. Dashboard Panel View -->
+        <section id="dashboard-section" class="dashboard-grid hidden">
+            
+            <!-- Left Side: User Profile & Credits -->
+            <div class="profile-card glass-panel">
+                <h3 class="card-title">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.25z"/>
+                    </svg>
+                    Credit Balance
+                </h3>
+
+                <div class="credits-circle-container">
+                    <div id="credits-radial-progress" class="credits-progress">
+                        <span id="dashboard-credits" class="credits-value">0</span>
+                        <span class="credits-max">Remaining</span>
+                    </div>
+                </div>
+
+                <div class="credits-info">
+                    Each diagnostic image scan consumes <strong>1 credit</strong>.
+                </div>
+
+                <div class="add-credits-section">
+                    <span class="add-credits-title">Sandbox Simulator</span>
+                    <button class="btn btn-secondary" onclick="app.simulateAddCredits()">
+                        <svg style="width: 16px; height: 16px; fill: currentColor;" viewBox="0 0 24 24">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                        Add 50 Sandbox Credits
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Side: Deepfake Drop Scanner & Dynamic Results -->
+            <div style="display: flex; flex-direction: column; gap: 30px;">
+                
+                <div class="scanner-card glass-panel">
+                    <h3 class="card-title">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                        </svg>
+                        Forensic Target Upload
+                    </h3>
+
+                    <!-- Drag & Drop Zone -->
+                    <div class="dropzone" id="drop-zone" onclick="document.getElementById('image-file-input').click()">
+                        <div class="dropzone-icon">
+                            <svg style="width: 32px; height: 32px; fill: currentColor;" viewBox="0 0 24 24">
+                                <path d="M16 13h-3V3h-2v10H8l4 4 4-4zM4 19v2h16v-2H4z"/>
+                            </svg>
+                        </div>
+                        <h3>Drag and drop your image here</h3>
+                        <p>Supports JPEG, PNG, WEBP, and GIF up to 10 MB</p>
+                        <input type="file" id="image-file-input" class="file-input" accept="image/*" onchange="app.handleFileSelect(event)">
+                    </div>
+
+                    <!-- Progress bar -->
+                    <div class="scan-progress-container" id="scan-progress-box">
+                        <div class="progress-header">
+                            <span id="scan-status-text">Analyzing spatial structures...</span>
+                            <span id="scan-progress-percent">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="scan-progress-fill"></div>
+                        </div>
+                    </div>
+
+                    <!-- Scan Response UI -->
+                    <div class="scan-result-panel" id="scan-result-box">
+                        <div class="result-gauge-box">
+                            <div class="gauge-circle" id="result-radial-gauge">
+                                <span class="gauge-score" id="result-score">0%</span>
+                                <span class="gauge-label">Authenticity</span>
+                            </div>
+                        </div>
+                        <div class="result-details-box">
+                            <div class="result-row">
+                                <span class="result-row-label">Safety Risk Level:</span>
+                                <span id="result-badge-container"></span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-row-label">Classification:</span>
+                                <span class="result-row-value" id="result-class">Real</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-row-label">Content Profile:</span>
+                                <span class="result-row-value" id="result-content-type">Photograph</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-row-label">Face Verification:</span>
+                                <span class="result-row-value" id="result-face-verify">None Detected</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-row-label">Structural Anomaly:</span>
+                                <span class="result-row-value" id="result-anomaly-score">0.00%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- 3. Diagnostic Scans History Table (Universal Width) -->
+        <section id="history-section" class="glass-panel history-section hidden">
+            <div class="history-header">
+                <h3 class="card-title">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                    </svg>
+                    Forensic Scan Log
+                </h3>
+            </div>
+            
+            <div class="table-wrapper">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Scanned Image</th>
+                            <th>Timestamp</th>
+                            <th>Prediction</th>
+                            <th>Authenticity</th>
+                            <th>Risk Index</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body">
+                        <!-- History injected here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="history-empty" class="empty-state">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2zm0 8H7v-2h10v2z"/>
+                </svg>
+                <p>No images scanned yet. Drag or choose an image above to start diagnostics.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Popup for detailed inspection -->
+    <div class="modal-overlay" id="detail-modal" onclick="app.closeModal(event)">
+        <div class="modal-box glass-panel" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="app.closeModal(event)">&times;</button>
+            <div class="modal-header">
+                <h2 id="modal-filename">scan_report.png</h2>
+                <p id="modal-timestamp">May 22, 2026, 11:34 AM</p>
+            </div>
+            
+            <div class="modal-content-grid">
+                
+                <div class="modal-section-title">Forensic Results</div>
+                <div class="result-row">
+                    <span class="result-row-label">Risk Assessment</span>
+                    <span id="modal-risk-badge"></span>
+                </div>
+                <div class="result-row">
+                    <span class="result-row-label">Authenticity Level</span>
+                    <span class="result-row-value" id="modal-authenticity">85.0%</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-row-label">Classification</span>
+                    <span class="result-row-value" id="modal-class">Real</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-row-label">Subject Profile</span>
+                    <span class="result-row-value" id="modal-content-type">Photograph</span>
+                </div>
+                
+                <div class="modal-section-title">Anomalies Detected</div>
+                <div class="result-row">
+                    <span class="result-row-label">GAN Artifact Factor</span>
+                    <span class="result-row-value" id="modal-gan-factor">0.00%</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-row-label">Spatial Inconsistency</span>
+                    <span class="result-row-value" id="modal-spatial-factor">0.00%</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-row-label">Lighting Mismatch Factor</span>
+                    <span class="result-row-value" id="modal-lighting-factor">0.00%</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-row-label">Face Mask Detected</span>
+                    <span class="result-row-value" id="modal-face-detected">Yes</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-row-label">Confidence Score</span>
+                    <span class="result-row-value" id="modal-confidence">98.5%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast-banner">
+        <span id="toast-msg">Success</span>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
