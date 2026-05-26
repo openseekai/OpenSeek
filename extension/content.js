@@ -8,13 +8,18 @@
 
 // Sync the token from the dashboard localStorage to chrome extension storage
 if (window.location.origin === "https://openseek-production.up.railway.app" || 
+    window.location.origin.includes(".vercel.app") ||
     window.location.origin === "http://127.0.0.1:8000" || 
     window.location.origin === "http://localhost:8000") {
     const token = localStorage.getItem("openseek_token");
     if (token) {
+        let backendUrl = window.location.origin;
+        if (window.location.origin.includes(".vercel.app")) {
+            backendUrl = "https://openseek-production.up.railway.app";
+        }
         chrome.storage.local.set({ 
             openseek_token: token,
-            openseek_backend_url: window.location.origin
+            openseek_backend_url: backendUrl
         });
     } else {
         chrome.storage.local.remove(["openseek_token", "openseek_backend_url"]);

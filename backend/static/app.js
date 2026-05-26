@@ -1,4 +1,6 @@
-const API_BASE = window.location.origin;
+const API_BASE = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
+    ? window.location.origin 
+    : "https://openseek-production.up.railway.app";
 
 class OpenSeekDashboard {
     constructor() {
