@@ -59,6 +59,11 @@ class OpenSeekDashboard {
         
         this.initFirebase();
         
+        const downloadBtn = document.getElementById("download-extension-btn");
+        if (downloadBtn) {
+            downloadBtn.href = `${API_BASE}/download-extension`;
+        }
+        
         if (this.token) {
             this.checkSessionAndLoadDashboard();
         } else {
