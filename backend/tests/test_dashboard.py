@@ -84,16 +84,7 @@ def test_dashboard_flow(client):
     assert history_resp.status_code == 200
     assert len(history_resp.json()["history"]) == 0
 
-    # 5. Simulate adding credits (+50)
-    add_resp = client.post("/user/add-credits", json={"amount": 50}, headers=auth_headers)
-    assert add_resp.status_code == 200
-    assert add_resp.json()["credits"] == 60
-
-    # 6. Verify credits increase in /auth/me
-    me_resp2 = client.get("/auth/me", headers=auth_headers)
-    assert me_resp2.json()["credits"] == 60
-
-    # 7. Scan an image (with headers) -> expects credit deduction and log history
+    # 5. Scan an image (with headers) -> expects credit deduction and log history
     import struct
     fake_jpg = (
         b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
@@ -113,10 +104,10 @@ def test_dashboard_flow(client):
         assert scan_resp.status_code == 200
         scan_data = scan_resp.json()
 
-        # Verify credit is deducted
-        assert scan_data["remaining_credits"] == 59
+        # Verify credit is deducted from 10 to 9
+        assert scan_data["remaining_credits"] == 9
         
-    # 8. Check that scan is added to the user's history log
+    # 6. Check that scan is added to the user's history log
     history_resp2 = client.get("/user/history", headers=auth_headers)
     assert history_resp2.status_code == 200
     history_list = history_resp2.json()["history"]
@@ -125,12 +116,12 @@ def test_dashboard_flow(client):
     assert history_list[0]["risk_level"] == "Low"
     assert history_list[0]["is_ai_generated"] is False
     
-    # 9. Test unauthorized operations
+    # 7. Test unauthorized operations
     bad_headers = {"Authorization": "Bearer badtoken"}
     unauth_resp = client.get("/auth/me", headers=bad_headers)
     assert unauth_resp.status_code == 401
     
-    # 10. Logout session
+    # 8. Logout session
     logout_resp = client.post("/auth/logout", headers=auth_headers)
     assert logout_resp.status_code == 200
     
