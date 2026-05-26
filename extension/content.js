@@ -7,16 +7,19 @@
  */
 
 // Sync the token from the dashboard localStorage to chrome extension storage
-if (window.location.origin === "https://openseek-production.up.railway.app") {
+if (window.location.origin === "https://openseek-production.up.railway.app" || 
+    window.location.origin === "http://127.0.0.1:8000" || 
+    window.location.origin === "http://localhost:8000") {
     const token = localStorage.getItem("openseek_token");
     if (token) {
-        chrome.storage.local.set({ openseek_token: token });
+        chrome.storage.local.set({ 
+            openseek_token: token,
+            openseek_backend_url: window.location.origin
+        });
     } else {
-        chrome.storage.local.remove("openseek_token");
+        chrome.storage.local.remove(["openseek_token", "openseek_backend_url"]);
     }
 }
-
-const BACKEND = "https://openseek-production.up.railway.app";
 const MIN_SIZE = 80;
 const MAX_CONCURRENT = 3;
 
@@ -94,13 +97,13 @@ async function scan(el) {
             const formData = new FormData();
             formData.append("file", blob, url.split("/").pop().split("?")[0] || "scan.jpg");
 
-            const { openseek_token } = await chrome.storage.local.get("openseek_token");
+            const { openseek_token, openseek_backend_url = "https://openseek-production.up.railway.app" } = await chrome.storage.local.get(["openseek_token", "openseek_backend_url"]);
             const headers = {};
             if (openseek_token) {
                 headers["Authorization"] = `Bearer ${openseek_token}`;
             }
 
-            const apiResp = await fetch(`${BACKEND}/detect-image`, {
+            const apiResp = await fetch(`${openseek_backend_url}/detect-image`, {
                 method: "POST",
                 headers: headers,
                 body: formData

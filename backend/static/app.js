@@ -173,9 +173,34 @@ class OpenSeekDashboard {
         if (this.user) {
             this.headerEmail.innerText = this.user.email;
         }
+
+        // Start polling for credit and history updates every 5 seconds
+        if (!this.pollingInterval) {
+            this.pollingInterval = setInterval(async () => {
+                if (this.token) {
+                    try {
+                        const res = await fetch(`${API_BASE}/auth/me`, {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+                        if (res.ok) {
+                            this.user = await res.json();
+                            this.refreshCreditsUI(this.user.credits);
+                            this.loadHistory();
+                        }
+                    } catch (e) {
+                        console.error("Polling error:", e);
+                    }
+                }
+            }, 5000);
+        }
     }
 
     logout() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+
         fetch(`${API_BASE}/auth/logout`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${this.token}` }
@@ -258,8 +283,8 @@ class OpenSeekDashboard {
         this.dashboardCredits.innerText = credits;
         
         // Update circular conic gradient
-        // Assuming maximum starts around 100 for visual ratio
-        const maxLimit = 100;
+        // Assuming maximum starts around 10 for visual ratio (10 daily credits limit)
+        const maxLimit = 10;
         const percentage = Math.min(100, Math.max(0, (credits / maxLimit) * 100));
         
         const progressCircle = document.getElementById("credits-radial-progress");

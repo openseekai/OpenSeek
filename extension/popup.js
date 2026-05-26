@@ -115,8 +115,9 @@ clearBtn.addEventListener("click", async () => {
     renderHistory([]);
 });
 
-docsBtn.addEventListener("click", () => {
-    chrome.tabs.create({ url: `${BACKEND}/docs` });
+docsBtn.addEventListener("click", async () => {
+    const { openseek_backend_url = "https://openseek-production.up.railway.app" } = await chrome.storage.local.get("openseek_backend_url");
+    chrome.tabs.create({ url: `${openseek_backend_url}/docs` });
 });
 
 /* ─── Init ─────────────────────────────────────────────────────────────────── */
