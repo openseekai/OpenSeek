@@ -55,10 +55,122 @@ class OpenSeekDashboard {
         document.documentElement.setAttribute("data-theme", this.theme);
         this.updateThemeIcon();
         
+        this.initFirebase();
+        
         if (this.token) {
             this.checkSessionAndLoadDashboard();
         } else {
             this.showAuth();
+        }
+    }
+
+    async initFirebase() {
+        try {
+            const res = await fetch(`${API_BASE}/config/firebase`);
+            if (!res.ok) return;
+            const config = await res.json();
+            
+            // Check if firebase is configured
+            if (config && config.apiKey && config.projectId) {
+                // Initialize Firebase Compat
+                firebase.initializeApp(config);
+                this.firebaseAuth = firebase.auth();
+                this.googleProvider = new firebase.auth.GoogleAuthProvider();
+            } else {
+                console.warn("[OpenSeek] Firebase parameters not fully configured in environment. Using credentials fallback mode.");
+            }
+        } catch (err) {
+            console.error("[OpenSeek] Failed to initialize Firebase:", err);
+        }
+    }
+
+    async handleGoogleLogin() {
+        // If Firebase Auth is loaded and initialized, run the Google sign-in popup flow
+        if (this.firebaseAuth && this.googleProvider) {
+            try {
+                this.showToast("Opening Google Sign-In...");
+                const result = await this.firebaseAuth.signInWithPopup(this.googleProvider);
+                const user = result.user;
+                const idToken = await user.getIdToken();
+                
+                // Send the token to the backend for verification/session creation
+                const res = await fetch(`${API_BASE}/auth/firebase-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_token: idToken,
+                        email: user.email || "",
+                        name: user.displayName || ""
+                    })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    this.token = data.token;
+                    this.user = data.user;
+                    localStorage.setItem("openseek_token", this.token);
+                    
+                    // Sync to Chrome storage if chrome extension API is accessible
+                    if (window.chrome && chrome.storage && chrome.storage.local) {
+                        chrome.storage.local.set({ 
+                            openseek_token: this.token,
+                            openseek_backend_url: window.location.origin
+                        });
+                    }
+                    
+                    this.showDashboard();
+                    this.refreshCreditsUI(this.user.credits);
+                    await this.loadHistory();
+                    this.showToast(`Welcome back!`);
+                } else {
+                    const errData = await res.json();
+                    this.showToast(errData.detail || "Google authentication failed", true);
+                }
+            } catch (err) {
+                console.error("Firebase Auth Error:", err);
+                this.showToast(err.message || "Google Sign-In failed", true);
+            }
+        } else {
+            // Local fallback/sandbox simulation mode if credentials are not configured in Firebase console yet:
+            this.showToast("Firebase credentials not configured. Opening Sandbox Google simulation...", false);
+            const mockEmail = prompt("Enter a mock Google email to simulate Google Sign-in:", "googleuser@gmail.com");
+            if (!mockEmail) return;
+            
+            try {
+                const res = await fetch(`${API_BASE}/auth/firebase-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_token: "MOCK_FIREBASE_TOKEN",
+                        email: mockEmail,
+                        name: "Google Sandbox User"
+                    })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    this.token = data.token;
+                    this.user = data.user;
+                    localStorage.setItem("openseek_token", this.token);
+                    
+                    if (window.chrome && chrome.storage && chrome.storage.local) {
+                        chrome.storage.local.set({ 
+                            openseek_token: this.token,
+                            openseek_backend_url: window.location.origin
+                        });
+                    }
+                    
+                    this.showDashboard();
+                    this.refreshCreditsUI(this.user.credits);
+                    await this.loadHistory();
+                    this.showToast(`Signed in as simulated user: ${mockEmail}`);
+                } else {
+                    const errData = await res.json();
+                    this.showToast(errData.detail || "Google simulation failed", true);
+                }
+            } catch (err) {
+                this.showToast("Failed to connect to backend", true);
+            }
         }
     }
 

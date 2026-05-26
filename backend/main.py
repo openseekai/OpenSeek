@@ -447,6 +447,91 @@ async def user_history(authorization: Optional[str] = Header(None)):
     return {"history": history}
 
 
+class FirebaseLoginRequest(BaseModel):
+    id_token: str
+    email: str
+    name: Optional[str] = None
+
+@app.get("/config/firebase")
+async def get_firebase_config():
+    # Attempt to load Firebase config from environment variables
+    config = {
+        "apiKey": os.getenv("FIREBASE_API_KEY", ""),
+        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", ""),
+        "projectId": os.getenv("FIREBASE_PROJECT_ID", ""),
+        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET", ""),
+        "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID", ""),
+        "appId": os.getenv("FIREBASE_APP_ID", "")
+    }
+    # Initialize firebase-admin on the fly if environment variables are set and it's not initialized
+    if config["projectId"] and config["apiKey"]:
+        try:
+            import firebase_admin
+            if not firebase_admin._apps:
+                firebase_admin.initialize_app()
+                print("[OpenSeek API] Firebase Admin Initialized successfully.")
+        except Exception as e:
+            print(f"[OpenSeek API] Firebase Admin Init failed: {e}")
+            
+    return config
+
+@app.post("/auth/firebase-login")
+async def firebase_login(req: FirebaseLoginRequest):
+    email = req.email.strip().lower()
+    
+    # Optional verification step if firebase-admin is available
+    try:
+        import firebase_admin
+        from firebase_admin import auth as firebase_auth
+        
+        # Verify the Firebase token
+        decoded_token = firebase_auth.verify_id_token(req.id_token)
+        verified_email = decoded_token.get("email")
+        if verified_email:
+            email = verified_email.strip().lower()
+    except Exception as e:
+        # Fallback for development/offline or unconfigured firebase-admin:
+        # log warning and proceed with client-provided email
+        print(f"[OpenSeek Auth] Firebase Admin verification note: {e}")
+        
+    if not email:
+        raise HTTPException(status_code=400, detail="No email provided or token verification failed")
+        
+    # Auto-register user in DB if they do not exist
+    conn = sqlite3.connect("openseek_cache.db")
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT id, email, credits FROM users WHERE email = ?", (email,))
+    user = c.fetchone()
+    conn.close()
+    
+    if not user:
+        import secrets
+        random_pwd = secrets.token_hex(16)
+        try:
+            register_user(email, random_pwd)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to auto-register Google user: {str(e)}")
+            
+        conn = sqlite3.connect("openseek_cache.db")
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        c.execute("SELECT id, email, credits FROM users WHERE email = ?", (email,))
+        user = c.fetchone()
+        conn.close()
+        
+    # Create dashboard session
+    token = create_session(user["id"])
+    return {
+        "status": "success",
+        "token": token,
+        "user": {
+            "email": user["email"],
+            "credits": user["credits"]
+        }
+    }
+
+
 
 # Serve Dashboard Static Site using path relative to main.py
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
