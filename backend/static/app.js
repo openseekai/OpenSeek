@@ -121,7 +121,7 @@ class OpenSeekDashboard {
                     if (window.chrome && chrome.storage && chrome.storage.local) {
                         chrome.storage.local.set({ 
                             openseek_token: this.token,
-                            openseek_backend_url: window.location.origin
+                            openseek_backend_url: API_BASE
                         });
                     }
                     
@@ -163,7 +163,7 @@ class OpenSeekDashboard {
                     if (window.chrome && chrome.storage && chrome.storage.local) {
                         chrome.storage.local.set({ 
                             openseek_token: this.token,
-                            openseek_backend_url: window.location.origin
+                            openseek_backend_url: API_BASE
                         });
                     }
                     
