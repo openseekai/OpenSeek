@@ -128,7 +128,7 @@ async function scan(el) {
 
             if (!apiResp.ok) {
                 const e = await apiResp.json().catch(() => ({ detail: apiResp.statusText }));
-                showBadge(el, "error", `⚡ ${e.detail || apiResp.statusText}`);
+                showBadge(el, "error", `⚡ [Backend: ${openseek_backend_url}] ${e.detail || apiResp.statusText}`);
                 scanning--;
                 return;
             }
@@ -161,7 +161,10 @@ async function scan(el) {
             ? "🔄 Refresh Page"
             : raw.includes("fetch") || raw.includes("Could not establish")
                 ? "Backend offline" : raw.slice(0, 40);
-        showBadge(el, "error", `⚡ ${msg}`);
+        chrome.storage.local.get(["openseek_backend_url"], (res) => {
+            const bUrl = res.openseek_backend_url || "https://openseek-production.up.railway.app";
+            showBadge(el, "error", `⚡ [Backend: ${bUrl}] ${msg}`);
+        });
         scanning--;
     }
 }
