@@ -132,11 +132,11 @@ async function scan(el) {
                 const lowerMsg = errMsg.toLowerCase();
                 
                 if (lowerMsg.includes("insufficient credits") || lowerMsg.includes("credit limit")) {
-                    showBadge(el, "error", "⚠️ Credit limit reached");
+                    showBadge(el, "error", "Credit limit reached");
                 } else if (lowerMsg.includes("invalid session token") || lowerMsg.includes("session expired") || apiResp.status === 401) {
-                    showBadge(el, "error", "🔑 Session expired — please log in");
+                    showBadge(el, "error", "Session expired — please log in");
                 } else {
-                    showBadge(el, "error", `⚡ [Backend: ${openseek_backend_url}] ${errMsg}`);
+                    showBadge(el, "error", `[Backend: ${openseek_backend_url}] ${errMsg}`);
                 }
                 scanning--;
                 return;
