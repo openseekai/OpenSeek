@@ -13,12 +13,24 @@ if (window.location.origin === "https://openseek-production.up.railway.app" ||
     window.location.origin === "http://localhost:8000") {
     
     function syncToken() {
-        const token = localStorage.getItem("openseek_token");
+        const syncEl = document.getElementById("openseek-sync-data");
+        let token = null;
+        let backendUrl = "https://openseek-production.up.railway.app";
+        
+        if (window.location.origin === "http://127.0.0.1:8000" || window.location.origin === "http://localhost:8000") {
+            backendUrl = window.location.origin;
+        }
+
+        if (syncEl) {
+            token = syncEl.getAttribute("data-token") || null;
+            backendUrl = syncEl.getAttribute("data-backend") || backendUrl;
+        } else {
+            try {
+                token = localStorage.getItem("openseek_token") || null;
+            } catch (_) {}
+        }
+
         chrome.storage.local.get(["openseek_token", "openseek_backend_url"], (res) => {
-            let backendUrl = "https://openseek-production.up.railway.app";
-            if (window.location.origin === "http://127.0.0.1:8000" || window.location.origin === "http://localhost:8000") {
-                backendUrl = window.location.origin;
-            }
             if (token !== res.openseek_token || backendUrl !== res.openseek_backend_url) {
                 if (token) {
                     chrome.storage.local.set({ 

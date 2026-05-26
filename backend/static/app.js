@@ -49,6 +49,27 @@ class OpenSeekDashboard {
         this.init();
     }
 
+    get token() {
+        return this._token;
+    }
+
+    set token(val) {
+        this._token = val;
+        this.syncTokenToDOM();
+    }
+
+    syncTokenToDOM() {
+        let syncEl = document.getElementById("openseek-sync-data");
+        if (!syncEl) {
+            syncEl = document.createElement("div");
+            syncEl.id = "openseek-sync-data";
+            syncEl.style.display = "none";
+            document.body.appendChild(syncEl);
+        }
+        syncEl.setAttribute("data-token", this._token || "");
+        syncEl.setAttribute("data-backend", API_BASE);
+    }
+
     init() {
         this.setupDragAndDrop();
         
