@@ -14,7 +14,7 @@ import numpy as np
 from typing import Optional
 import torch
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Request, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Request, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
@@ -467,7 +467,8 @@ class FirebaseLoginRequest(BaseModel):
     name: Optional[str] = None
 
 @app.get("/config/firebase")
-async def get_firebase_config():
+async def get_firebase_config(response: Response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     # Attempt to load Firebase config from environment variables
     config = {
         "apiKey": os.getenv("FIREBASE_API_KEY", "").strip(),
