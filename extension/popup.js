@@ -100,11 +100,18 @@ function renderHistory(history) {
 /* ─── Load data from storage ───────────────────────────────────────────────── */
 
 async function loadData() {
-    const { history = [], backendOnline = false } =
-        await chrome.storage.local.get(["history", "backendOnline"]);
+    const { history = [], backendOnline = false, openseek_token, openseek_backend_url = "https://openseek-production.up.railway.app" } =
+        await chrome.storage.local.get(["history", "backendOnline", "openseek_token", "openseek_backend_url"]);
 
     setStatus(backendOnline);
     renderHistory(history);
+
+    const diagBackend = document.getElementById("diagBackend");
+    const diagToken = document.getElementById("diagToken");
+    if (diagBackend && diagToken) {
+        diagBackend.textContent = openseek_backend_url;
+        diagToken.textContent = openseek_token ? `Active (${openseek_token.slice(0, 6)}...)` : "Not Logged In";
+    }
 }
 
 /* ─── Button actions ───────────────────────────────────────────────────────── */
