@@ -667,10 +667,13 @@ async def health():
     except Exception:
         user_count = -1
 
+    colab_url = _os.getenv("COLAB_MODEL_URL") or _os.getenv("EXTERNAL_MODEL_URL")
     return {
         "status": "ok",
         "model": "Advanced OpenSeek Multimodal Target",
         "models_loaded": _ensemble is not None,
+        "hybrid_mode_active": colab_url is not None,
+        "colab_url_configured": colab_url,
         "database": db_backend,
         "firebase_sa_env_set": has_sa_json,
         "firebase_sa_file_exists": has_sa_file,
