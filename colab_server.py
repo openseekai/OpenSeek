@@ -583,4 +583,14 @@ def health():
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    try:
+        # Detect if running in an interactive notebook (Jupyter / Colab)
+        shell = get_ipython().__class__.__name__
+        import nest_asyncio
+        import threading
+        nest_asyncio.apply()
+        threading.Thread(target=lambda: uvicorn.run(app, host="127.0.0.1", port=8000), daemon=True).start()
+        print("[*] API Server started in background on port 8000 (Notebook mode).")
+    except NameError:
+        # Standard CLI execution
+        uvicorn.run(app, host="127.0.0.1", port=8000)
