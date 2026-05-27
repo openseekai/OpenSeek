@@ -364,10 +364,16 @@ window.addEventListener("load", () => {
 });
 
 /* ─── Context menu trigger ───────────────────────────────────────────────── */
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "SCAN_CONTEXT") {
         const el = [...document.querySelectorAll("img")]
             .find(e => getRealUrl(e) === msg.url || e.src === msg.url);
-        if (el) scan(el, /* fromContextMenu= */ true);
+        if (el) {
+            scan(el, /* fromContextMenu= */ true);
+            sendResponse({ success: true });
+        } else {
+            sendResponse({ success: false, reason: "Element not found" });
+        }
     }
+    return true;
 });

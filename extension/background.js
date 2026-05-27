@@ -19,13 +19,18 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const url = info.srcUrl || info.mediaType;
     if (!url) return;
 
-    // Only send to content script — it handles the scan + sends RESULT back.
-    // Do NOT also call analyzeAndNotify here; that would scan twice and charge 2 credits.
-    chrome.tabs.sendMessage(tab.id, { type: "SCAN_CONTEXT", url }).catch(async (err) => {
-        // Content script not injected (e.g. non-HTML page) — fall back to background scan
+    try {
+        const response = await chrome.tabs.sendMessage(tab.id, { type: "SCAN_CONTEXT", url });
+        if (response && response.success) {
+            console.log("OpenSeek: Content script is scanning the image.");
+            return;
+        }
+        console.warn("OpenSeek: Content script could not find element, scanning from background.");
+        await analyzeAndNotify(url, "image", tab.id);
+    } catch (err) {
         console.warn("OpenSeek: Content script unavailable, scanning from background.", err.message);
         await analyzeAndNotify(url, "image", tab.id);
-    });
+    }
 });
 
 /* ─── Direct background analysis (for context menu) ──────────────────────── */
