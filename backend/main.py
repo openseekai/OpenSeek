@@ -22,6 +22,9 @@ from pydantic import BaseModel
 
 from models.advanced_ensemble import AdvancedForensicEnsemble
 from utils.face_detector import get_face_detector
+# ── Database Cache Initialization ───────────────────────────────────────────
+DB_PATH = "openseek_cache.db"
+
 # ── Database backend: prefer Firestore, fall back to SQLite ─────────────────
 _using_firestore = False
 try:
@@ -46,7 +49,7 @@ except Exception as _fb_err:
         """SQLite fallback for Google/Firebase sign-in."""
         import sqlite3, secrets as _sec
         email = email.strip().lower()
-        conn = sqlite3.connect("openseek_cache.db")
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         c.execute("SELECT id, email, credits FROM users WHERE email = ?", (email,))
@@ -65,7 +68,6 @@ except ImportError:
     HAS_FIREBASE_ADMIN = False
 
 # ── Database Cache Initialization ───────────────────────────────────────────
-DB_PATH = "openseek_cache.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
