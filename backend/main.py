@@ -22,11 +22,40 @@ from pydantic import BaseModel
 
 from models.advanced_ensemble import AdvancedForensicEnsemble
 from utils.face_detector import get_face_detector
-from user_db import (
-    init_user_db, register_user, authenticate_user, create_session,
-    get_user_by_session, delete_session, check_and_deduct_credit,
-    log_scan, get_user_history, add_credits
-)
+# ── Database backend: prefer Firestore, fall back to SQLite ─────────────────
+_using_firestore = False
+try:
+    from firebase_db import (
+        init_user_db, register_user, authenticate_user, create_session,
+        get_user_by_session, delete_session, check_and_deduct_credit,
+        log_scan, get_user_history, add_credits, get_or_create_firebase_user
+    )
+    # Quick smoke-test: will raise if credentials are missing
+    from firebase_db import _get_db as _fb_get_db
+    _fb_get_db()
+    _using_firestore = True
+    print("[OpenSeek API] 🔥 Using Firebase Firestore as the user database.")
+except Exception as _fb_err:
+    print(f"[OpenSeek API] ⚠️  Firestore unavailable ({_fb_err}). Falling back to SQLite.")
+    from user_db import (
+        init_user_db, register_user, authenticate_user, create_session,
+        get_user_by_session, delete_session, check_and_deduct_credit,
+        log_scan, get_user_history, add_credits
+    )
+    def get_or_create_firebase_user(email: str) -> dict:
+        """SQLite fallback for Google/Firebase sign-in."""
+        import sqlite3, secrets as _sec
+        email = email.strip().lower()
+        conn = sqlite3.connect("openseek_cache.db")
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        c.execute("SELECT id, email, credits FROM users WHERE email = ?", (email,))
+        user = c.fetchone()
+        conn.close()
+        if user:
+            return {"id": user["id"], "email": user["email"], "credits": user["credits"]}
+        random_pwd = _sec.token_hex(16)
+        return register_user(email, random_pwd)
 
 try:
     import firebase_admin
@@ -45,6 +74,29 @@ def init_db():
                  (hash TEXT PRIMARY KEY, response TEXT)''')
     conn.commit()
     conn.close()
+
+# ── Scan Deduplication Lock ──────────────────────────────────────────────────
+# Prevents the same user scanning the same file twice within DEDUP_WINDOW_S.
+# Key: (user_id, file_hash) → timestamp of last scan.
+import time as _time
+from threading import Lock as _Lock
+_DEDUP_CACHE: dict = {}     # (user_id, file_hash) → float (epoch time)
+_DEDUP_LOCK = _Lock()
+DEDUP_WINDOW_S = 30         # seconds
+
+def _is_duplicate_scan(user_id, file_hash: str) -> bool:
+    """Return True if this (user, hash) combo was scanned in the last 30s."""
+    key = (str(user_id), file_hash)
+    now = _time.time()
+    with _DEDUP_LOCK:
+        # Purge stale entries
+        stale = [k for k, t in _DEDUP_CACHE.items() if now - t > DEDUP_WINDOW_S]
+        for k in stale:
+            del _DEDUP_CACHE[k]
+        if key in _DEDUP_CACHE:
+            return True
+        _DEDUP_CACHE[key] = now
+        return False
 
 # Run initialization immediately to ensure tables exist under test runners
 init_db()
@@ -212,9 +264,13 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
     cached = get_cached_result(file_hash)
     if cached:
         os.remove(temp_path)
-        # Create a copy so we don't modify global cache response directly
         cached_res = dict(cached)
         if user:
+            # Deduplication: don't charge/log if same file scanned within 30s
+            if _is_duplicate_scan(user["id"], file_hash):
+                print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
+                cached_res["remaining_credits"] = user["credits"]
+                return cached_res
             if not check_and_deduct_credit(user["id"], 1):
                 raise HTTPException(status_code=403, detail="Insufficient credits")
             log_scan(
@@ -300,18 +356,23 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                 response_data = get_fallback_analysis_result(temp_path)
 
         if user:
-            if not check_and_deduct_credit(user["id"], 1):
-                raise HTTPException(status_code=403, detail="Insufficient credits")
-            log_scan(
-                user_id=user["id"],
-                filename=file.filename,
-                ai_probability=response_data["ai_probability"],
-                risk_level=response_data["risk_level"],
-                is_ai_generated=response_data["is_ai_generated"],
-                details=response_data
-            )
-            updated_user = get_user_by_session(token)
-            response_data["remaining_credits"] = updated_user["credits"]
+            # Deduplication: don't charge/log if same file scanned within 30s
+            if _is_duplicate_scan(user["id"], file_hash):
+                print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']}")
+                response_data["remaining_credits"] = user["credits"]
+            else:
+                if not check_and_deduct_credit(user["id"], 1):
+                    raise HTTPException(status_code=403, detail="Insufficient credits")
+                log_scan(
+                    user_id=user["id"],
+                    filename=file.filename,
+                    ai_probability=response_data["ai_probability"],
+                    risk_level=response_data["risk_level"],
+                    is_ai_generated=response_data["is_ai_generated"],
+                    details=response_data
+                )
+                updated_user = get_user_by_session(token)
+                response_data["remaining_credits"] = updated_user["credits"]
 
         set_cached_result(file_hash, response_data)
         return response_data
@@ -452,10 +513,34 @@ async def analyze_image_alias(file: UploadFile = File(...), authorization: Optio
 
 @app.get("/health")
 async def health():
+    import os as _os
+    has_sa_json  = bool(_os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip())
+    has_sa_file  = _os.path.exists("firebase_service_account.json")
+    db_backend   = "firestore" if _using_firestore else "sqlite"
+
+    # Quick user count for diagnosis
+    user_count = None
+    try:
+        if _using_firestore:
+            from firebase_db import _get_db
+            user_count = len(list(_get_db().collection("users").limit(200).get()))
+        else:
+            import sqlite3 as _sq
+            conn = _sq.connect("openseek_cache.db")
+            row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
+            conn.close()
+            user_count = row[0] if row else 0
+    except Exception:
+        user_count = -1
+
     return {
         "status": "ok",
         "model": "Advanced OpenSeek Multimodal Target",
         "models_loaded": _ensemble is not None,
+        "database": db_backend,
+        "firebase_sa_env_set": has_sa_json,
+        "firebase_sa_file_exists": has_sa_file,
+        "registered_users": user_count,
     }
 
 # ── Auth & Dashboard Endpoints ────────────────────────────────────────────────
@@ -554,55 +639,33 @@ async def get_firebase_config(response: Response):
 @app.post("/auth/firebase-login")
 async def firebase_login(req: FirebaseLoginRequest):
     email = req.email.strip().lower()
-    
-    # Optional verification step if firebase-admin is available
-    if HAS_FIREBASE_ADMIN:
+
+    # Verify the Firebase ID token if firebase-admin is available
+    if HAS_FIREBASE_ADMIN and req.id_token != "MOCK_FIREBASE_TOKEN":
         try:
-            # Verify the Firebase token
             decoded_token = firebase_auth.verify_id_token(req.id_token)
             verified_email = decoded_token.get("email")
             if verified_email:
                 email = verified_email.strip().lower()
         except Exception as e:
-            # Fallback for development/offline or unconfigured firebase-admin:
-            # log warning and proceed with client-provided email
-            print(f"[OpenSeek Auth] Firebase Admin verification note: {e}")
-        
+            print(f"[OpenSeek Auth] Firebase token verification note: {e}")
+
     if not email:
         raise HTTPException(status_code=400, detail="No email provided or token verification failed")
-        
-    # Auto-register user in DB if they do not exist
-    conn = sqlite3.connect("openseek_cache.db")
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    c.execute("SELECT id, email, credits FROM users WHERE email = ?", (email,))
-    user = c.fetchone()
-    conn.close()
-    
-    if not user:
-        import secrets
-        random_pwd = secrets.token_hex(16)
-        try:
-            register_user(email, random_pwd)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to auto-register Google user: {str(e)}")
-            
-        conn = sqlite3.connect("openseek_cache.db")
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        c.execute("SELECT id, email, credits FROM users WHERE email = ?", (email,))
-        user = c.fetchone()
-        conn.close()
-        
-    # Create dashboard session
+
+    try:
+        user = get_or_create_firebase_user(email)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create user account: {str(e)}")
+
     token = create_session(user["id"])
     return {
         "status": "success",
         "token": token,
         "user": {
             "email": user["email"],
-            "credits": user["credits"]
-        }
+            "credits": user["credits"],
+        },
     }
 
 

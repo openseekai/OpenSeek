@@ -89,7 +89,17 @@ class OpenSeekDashboard {
             this.checkSessionAndLoadDashboard();
         } else {
             this.showAuth();
+            // Ping backend immediately so it wakes up (Railway cold start)
+            // while the user is still on the login page — by the time they
+            // type their password, the server is already warm.
+            this._wakeBackend();
         }
+    }
+
+    _wakeBackend() {
+        fetch(`${API_BASE}/health`, { method: 'GET', cache: 'no-store' })
+            .then(() => console.log('[OpenSeek] Backend is warm ✅'))
+            .catch(() => console.warn('[OpenSeek] Backend warming up...'));
     }
 
     async initFirebase() {
@@ -277,6 +287,10 @@ class OpenSeekDashboard {
 
     // Session Management
     async checkSessionAndLoadDashboard() {
+        // Show a lightweight loading state while we verify
+        this.authSection.classList.remove('hidden');
+        this.dashboardSection.classList.add('hidden');
+
         try {
             const res = await fetch(`${API_BASE}/auth/me`, {
                 headers: { 'Authorization': `Bearer ${this.token}` }
@@ -286,13 +300,18 @@ class OpenSeekDashboard {
                 this.showDashboard();
                 this.refreshCreditsUI(this.user.credits);
                 this.loadHistory();
-            } else {
-                // Token invalid or expired
+            } else if (res.status === 401) {
+                // Explicitly invalid — logout
                 this.logout();
+            } else {
+                // Backend sleeping / error — don't log out, just show auth
+                this.showToast("Backend is warming up, please try again.", true);
+                this.showAuth();
             }
         } catch (err) {
-            console.error(err);
-            this.showToast("Network error. Working offline.", true);
+            // Network error — don't log out, keep token for next attempt
+            console.warn("[OpenSeek] Session check failed (network):", err.message);
+            this.showToast("Could not reach server. Check your connection.", true);
             this.showAuth();
         }
     }
@@ -360,6 +379,11 @@ class OpenSeekDashboard {
         const email = document.getElementById("login-email").value;
         const password = document.getElementById("login-password").value;
 
+        // Show loading state on button immediately
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn ? btn.innerText : '';
+        if (btn) { btn.innerText = 'Signing in…'; btn.disabled = true; }
+
         try {
             const res = await fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
@@ -371,15 +395,27 @@ class OpenSeekDashboard {
             if (res.ok) {
                 this.token = data.token;
                 localStorage.setItem("openseek_token", this.token);
-                this.user = { email: data.user.email, credits: data.user.credits };
+                // Build user from login response — no extra /auth/me round trip needed
+                this.user = { email: data.user.email, credits: data.user.credits, id: data.user.id };
+
+                // Sync token to Chrome extension storage
+                if (window.chrome && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({ openseek_token: this.token, openseek_backend_url: API_BASE });
+                }
+
+                // Show dashboard instantly — no waiting
                 this.showDashboard();
                 this.refreshCreditsUI(this.user.credits);
-                this.loadHistory();
                 this.showToast("Welcome back to OpenSeek!");
+
+                // Load history in background (non-blocking)
+                this.loadHistory();
             } else {
+                if (btn) { btn.innerText = originalText; btn.disabled = false; }
                 this.showToast(data.detail || "Authentication failed", true);
             }
         } catch (err) {
+            if (btn) { btn.innerText = originalText; btn.disabled = false; }
             this.showToast("Failed to connect to the authentication server.", true);
         }
     }

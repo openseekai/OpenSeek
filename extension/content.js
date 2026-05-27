@@ -101,7 +101,7 @@ async function toBase64(url) {
 }
 
 /* ─── Scanning logic ────────────────────────────────────────────────────────── */
-async function scan(el) {
+async function scan(el, fromContextMenu = false) {
     const state = seen.get(el);
     if (!state) return;
     if (scanning >= MAX_CONCURRENT) { showBadge(el, "error", "⚡ Busy—retry"); return; }
@@ -142,13 +142,24 @@ async function scan(el) {
                 const e = await apiResp.json().catch(() => ({ detail: apiResp.statusText }));
                 const errMsg = e.detail || apiResp.statusText || "";
                 const lowerMsg = errMsg.toLowerCase();
-                
+
                 if (lowerMsg.includes("insufficient credits") || lowerMsg.includes("credit limit")) {
-                    showBadge(el, "error", "Credit limit reached");
-                } else if (lowerMsg.includes("invalid session token") || lowerMsg.includes("session expired") || apiResp.status === 401) {
-                    showBadge(el, "error", "Session expired — please log in");
+                    showBadge(el, "error", "❌ Credit limit reached");
+                } else if (apiResp.status === 401 ||
+                           lowerMsg.includes("invalid session") ||
+                           lowerMsg.includes("session expired") ||
+                           lowerMsg.includes("unauthorized")) {
+                    // Clear stale token — don't keep sending invalid credentials
+                    chrome.storage.local.remove(["openseek_token"]);
+                    // Show a clickable badge that opens the dashboard login page
+                    const { openseek_backend_url: bUrl = "https://openseek-production.up.railway.app" } =
+                        await chrome.storage.local.get("openseek_backend_url");
+                    const loginUrl = bUrl.includes("railway.app") || bUrl.includes("localhost")
+                        ? bUrl
+                        : "https://openseek-production.up.railway.app";
+                    showLoginBadge(el, loginUrl);
                 } else {
-                    showBadge(el, "error", `[Backend: ${openseek_backend_url}] ${errMsg}`);
+                    showBadge(el, "error", `⚠️ ${errMsg.slice(0, 60)}`);
                 }
                 scanning--;
                 return;
@@ -159,7 +170,7 @@ async function scan(el) {
             const result = data;
 
             results.set(url, result);
-            await chrome.runtime.sendMessage({ type: "RESULT", result, url }).catch(err => {
+            await chrome.runtime.sendMessage({ type: "RESULT", result, url, fromContextMenu }).catch(err => {
                 console.warn("OpenSeek: Could not store result in history:", err.message);
             });
             renderResult(el, result);
@@ -211,6 +222,27 @@ function showBadge(el, kind, html) {
         : "ds-result-overlay ds-result-medium";
 
     const badge = createOverlayEl(cls, html);
+    state.badge = badge;
+
+    const p = getBadgePos(el);
+    badge.style.top = `${p.top_badge}px`;
+    badge.style.left = `${p.left_badge}px`;
+}
+
+function showLoginBadge(el, dashboardUrl) {
+    const state = seen.get(el);
+    if (!state) return;
+    state.badge?.remove();
+
+    const badge = createOverlayEl("ds-result-overlay ds-result-medium",
+        `<span style="cursor:pointer; text-decoration:underline;" title="Click to log in to OpenSeek">
+            🔑 Session expired — <strong>click to log in</strong>
+        </span>`
+    );
+    badge.style.cursor = "pointer";
+    badge.addEventListener("click", () => {
+        chrome.tabs.create({ url: dashboardUrl });
+    });
     state.badge = badge;
 
     const p = getBadgePos(el);
@@ -336,6 +368,6 @@ chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "SCAN_CONTEXT") {
         const el = [...document.querySelectorAll("img")]
             .find(e => getRealUrl(e) === msg.url || e.src === msg.url);
-        if (el) scan(el);
+        if (el) scan(el, /* fromContextMenu= */ true);
     }
 });

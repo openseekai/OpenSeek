@@ -37,3 +37,7 @@ Thumbs.db
 *.pth
 *.onnx
 *.h5
+
+# Firebase service account key (NEVER commit this)
+firebase_service_account.json
+*.json.key

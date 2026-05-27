@@ -19,15 +19,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const url = info.srcUrl || info.mediaType;
     if (!url) return;
 
-    let type = "image";
-
-    // Tell the content script to trigger a scan
-    chrome.tabs.sendMessage(tab.id, { type: "SCAN_CONTEXT", url }).catch((err) => {
-        console.warn("OpenSeek: Content script not loaded in this tab yet", err);
+    // Only send to content script — it handles the scan + sends RESULT back.
+    // Do NOT also call analyzeAndNotify here; that would scan twice and charge 2 credits.
+    chrome.tabs.sendMessage(tab.id, { type: "SCAN_CONTEXT", url }).catch(async (err) => {
+        // Content script not injected (e.g. non-HTML page) — fall back to background scan
+        console.warn("OpenSeek: Content script unavailable, scanning from background.", err.message);
+        await analyzeAndNotify(url, "image", tab.id);
     });
-
-    // Also do it from the background directly and show notification result
-    await analyzeAndNotify(url, type, tab.id);
 });
 
 /* ─── Direct background analysis (for context menu) ──────────────────────── */
@@ -44,7 +42,12 @@ async function analyzeAndNotify(url, type, tabId) {
             headers: headers,
             body: JSON.stringify({ url }),
         });
-        if (!resp.ok) return;
+        if (!resp.ok) {
+            if (resp.status === 401) {
+                chrome.storage.local.remove(["openseek_token"]);
+            }
+            return;
+        }
         const data = await resp.json();
         storeResult(data, url);
         sendNotification(data);
@@ -104,6 +107,10 @@ async function storeResult(result, url) {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "RESULT") {
         storeResult(msg.result, msg.url);
+        // Show notification when the content script finishes a context-menu scan
+        if (msg.fromContextMenu) {
+            sendNotification(msg.result);
+        }
     }
     if (msg.type === "SHOW_DETAIL") {
         chrome.storage.session.set({ activeDetail: msg });
