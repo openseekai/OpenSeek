@@ -542,7 +542,8 @@ class OpenSeekDashboard {
     }
 
     getRiskClass(risk) {
-        switch (risk.toLowerCase()) {
+        if (!risk) return 'uncertain';
+        switch (String(risk).toLowerCase()) {
             case 'low': return 'low';
             case 'medium': return 'medium';
             case 'high': return 'high';

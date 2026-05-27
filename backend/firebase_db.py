@@ -323,6 +323,7 @@ def log_scan(user_id: str, filename: str, ai_probability: float,
              risk_level: str, is_ai_generated: bool, details: dict) -> None:
     """Log a scan event in the user's history collection."""
     db = _get_db()
+    file_hash = details.get("file_hash") if isinstance(details, dict) else None
     db.collection("scans").add({
         "user_id": user_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -330,6 +331,7 @@ def log_scan(user_id: str, filename: str, ai_probability: float,
         "ai_probability": ai_probability,
         "risk_level": risk_level,
         "is_ai_generated": is_ai_generated,
+        "file_hash": file_hash,
         "details": details,
     })
 
@@ -352,11 +354,34 @@ def get_user_history(user_id: str, limit: int = 50) -> list[dict]:
             "ai_probability": d.get("ai_probability", 0.0),
             "risk_level": d.get("risk_level", "Low"),
             "is_ai_generated": d.get("is_ai_generated", False),
+            "file_hash": d.get("file_hash", ""),
             "details": d.get("details", {}),
         })
     # Sort by timestamp descending and apply limit in memory
     history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     return history[:limit]
+
+
+def is_duplicate_scan_db(user_id: str, file_hash: str) -> bool:
+    """Check Firestore if this user scanned the same file hash in the last 30 seconds."""
+    if not file_hash:
+        return False
+    # Fetch recent history (which is already sorted by timestamp descending)
+    history = get_user_history(user_id, limit=5)
+    now = datetime.now(timezone.utc)
+    for scan in history:
+        scan_hash = scan.get("file_hash") or scan.get("details", {}).get("file_hash")
+        if scan_hash == file_hash:
+            ts_str = scan.get("timestamp", "")
+            if ts_str:
+                try:
+                    ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                    diff = (now - ts).total_seconds()
+                    if diff < 30:
+                        return True
+                except Exception:
+                    pass
+    return False
 
 
 # ── Google/Firebase Auth Login ────────────────────────────────────────────────

@@ -88,15 +88,31 @@ def _is_duplicate_scan(user_id, file_hash: str) -> bool:
     """Return True if this (user, hash) combo was scanned in the last 30s."""
     key = (str(user_id), file_hash)
     now = _time.time()
+    
+    # 1. Check in-memory fast lock first
+    in_memory_dup = False
     with _DEDUP_LOCK:
         # Purge stale entries
         stale = [k for k, t in _DEDUP_CACHE.items() if now - t > DEDUP_WINDOW_S]
         for k in stale:
             del _DEDUP_CACHE[k]
         if key in _DEDUP_CACHE:
+            in_memory_dup = True
+        else:
+            _DEDUP_CACHE[key] = now
+
+    if in_memory_dup:
+        return True
+
+    # 2. Check in shared Firestore (cross-process safety for multi-worker setups)
+    try:
+        from firebase_db import is_duplicate_scan_db
+        if is_duplicate_scan_db(user_id, file_hash):
             return True
-        _DEDUP_CACHE[key] = now
-        return False
+    except Exception as e:
+        print(f"[OpenSeek API] DB duplicate scan check failed: {e}")
+
+    return False
 
 # Run initialization immediately to ensure tables exist under test runners
 init_db()
@@ -273,6 +289,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                 return cached_res
             if not check_and_deduct_credit(user["id"], 1, token):
                 raise HTTPException(status_code=403, detail="Insufficient credits")
+            cached_res["file_hash"] = file_hash
             log_scan(
                 user_id=user["id"],
                 filename=file.filename,
@@ -363,6 +380,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
             else:
                 if not check_and_deduct_credit(user["id"], 1, token):
                     raise HTTPException(status_code=403, detail="Insufficient credits")
+                response_data["file_hash"] = file_hash
                 log_scan(
                     user_id=user["id"],
                     filename=file.filename,
@@ -422,8 +440,14 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
         if cached:
             cached_res = dict(cached)
             if user:
+                # Deduplication: don't charge/log if same file scanned within 30s
+                if _is_duplicate_scan(user["id"], file_hash):
+                    print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
+                    cached_res["remaining_credits"] = user["credits"]
+                    return cached_res
                 if not check_and_deduct_credit(user["id"], 1, token):
                     raise HTTPException(status_code=403, detail="Insufficient credits")
+                cached_res["file_hash"] = file_hash
                 log_scan(
                     user_id=user["id"],
                     filename=filename,
@@ -485,18 +509,24 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                 response_data = get_fallback_analysis_result(temp_path)
             
         if user:
-            if not check_and_deduct_credit(user["id"], 1, token):
-                raise HTTPException(status_code=403, detail="Insufficient credits")
-            log_scan(
-                user_id=user["id"],
-                filename=filename,
-                ai_probability=response_data["ai_probability"],
-                risk_level=response_data["risk_level"],
-                is_ai_generated=response_data["is_ai_generated"],
-                details=response_data
-            )
-            updated_user = get_user_by_session(token)
-            response_data["remaining_credits"] = updated_user["credits"]
+            # Deduplication: don't charge/log if same file scanned within 30s
+            if _is_duplicate_scan(user["id"], file_hash):
+                print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']}")
+                response_data["remaining_credits"] = user["credits"]
+            else:
+                if not check_and_deduct_credit(user["id"], 1, token):
+                    raise HTTPException(status_code=403, detail="Insufficient credits")
+                response_data["file_hash"] = file_hash
+                log_scan(
+                    user_id=user["id"],
+                    filename=filename,
+                    ai_probability=response_data["ai_probability"],
+                    risk_level=response_data["risk_level"],
+                    is_ai_generated=response_data["is_ai_generated"],
+                    details=response_data
+                )
+                updated_user = get_user_by_session(token)
+                response_data["remaining_credits"] = updated_user["credits"]
 
         set_cached_result(file_hash, response_data)
         return response_data
