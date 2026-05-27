@@ -179,10 +179,10 @@ async def lifespan(app: FastAPI):
     _ensemble = AdvancedForensicEnsemble(device)
     _face_detector = get_face_detector()
     
-    # FP16 Optimization
+    # FP16 Optimization via PyTorch autocast & cuDNN autotuning
     if torch.cuda.is_available():
-        print("[OpenSeek API] Optimizing Models for FP16 Inference...")
-        _ensemble.half()
+        print("[OpenSeek API] GPU Detected! Enabling cuDNN auto-tuner benchmarks...")
+        torch.backends.cudnn.benchmark = True
         
     # Free up memory allocated during loading
     import gc

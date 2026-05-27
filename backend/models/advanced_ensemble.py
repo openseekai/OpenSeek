@@ -200,11 +200,13 @@ class AdvancedForensicEnsemble(nn.Module):
                 patches.append(tensor)
                 
         patches_tensor = torch.stack(patches).to(self.device)
-        
+        is_cuda = self.device == "cuda" or (isinstance(self.device, torch.device) and self.device.type == "cuda")
+        from torch.cuda.amp import autocast
         with torch.no_grad():
-            # Batch inference on all 64 patches
-            logits = self.spatial_model(patches_tensor)
-            probs = torch.sigmoid(self.calibrator(logits)).squeeze().cpu().numpy()
+            with autocast(enabled=is_cuda):
+                # Batch inference on all 64 patches
+                logits = self.spatial_model(patches_tensor)
+                probs = torch.sigmoid(self.calibrator(logits)).squeeze().cpu().numpy()
             
         patch_variance = np.var(probs)
         manipulated_count = int(np.sum(probs > 0.6))
@@ -247,21 +249,27 @@ class AdvancedForensicEnsemble(nn.Module):
         original_img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         
         input_tensor = self.transform(img).unsqueeze(0).to(self.device)
+        is_cuda = self.device == "cuda" or (isinstance(self.device, torch.device) and self.device.type == "cuda")
+        from torch.cuda.amp import autocast
         
         # 0. Route Classification via MobileNetV3
-        content_type = self.content_type_classifier.classify(input_tensor)
+        with torch.no_grad():
+            with autocast(enabled=is_cuda):
+                content_type = self.content_type_classifier.classify(input_tensor)
         is_illustration = (content_type in ["Digital Illustration", "3D Render"])
         
         # 1. Spatial Model (skip Grad-CAM in fast mode for speed)
         if fast:
             with torch.no_grad():
-                spatial_logit = self.spatial_model(input_tensor)
-                spatial_prob = torch.sigmoid(self.calibrator(spatial_logit)).item()
+                with autocast(enabled=is_cuda):
+                    spatial_logit = self.spatial_model(input_tensor)
+                    spatial_prob = torch.sigmoid(self.calibrator(spatial_logit)).item()
             heatmap_base64 = None
         else:
             input_tensor.requires_grad = True
-            spatial_logit = self.spatial_model(input_tensor)
-            spatial_prob = torch.sigmoid(self.calibrator(spatial_logit)).item()
+            with autocast(enabled=is_cuda):
+                spatial_logit = self.spatial_model(input_tensor)
+                spatial_prob = torch.sigmoid(self.calibrator(spatial_logit)).item()
             heatmap_base64 = self.calculate_gradcam(input_tensor, original_img_cv)
             input_tensor.requires_grad = False
 
@@ -278,71 +286,72 @@ class AdvancedForensicEnsemble(nn.Module):
                 print(f"[OpenSeek] HuggingFace expert model inference error: {e}")
 
         with torch.no_grad():
-            freq_tensor = self._get_fft_magnitude(original_img_cv)
-            
-            # Extract cluster embedding anomaly score
-            embedding_dist_score = self.embedding_analyzer.analyze_anomaly(img)
-            
-            if not is_illustration:
-                # ── PHOTOGRAPH FORENSIC PIPELINE ──
-                freq_logit = self.freq_model(freq_tensor)
-                freq_prob = torch.sigmoid(self.calibrator(freq_logit)).item()
+            with autocast(enabled=is_cuda):
+                freq_tensor = self._get_fft_magnitude(original_img_cv)
                 
-                res_tensor = self._get_noise_residual(original_img_cv)
-                res_logit = self.residual_model(res_tensor)
-                authentic_prnu_prob = torch.sigmoid(self.calibrator(res_logit)).item()
+                # Extract cluster embedding anomaly score
+                embedding_dist_score = self.embedding_analyzer.analyze_anomaly(img)
                 
-                if not fast:
-                    patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
-                else:
-                    patch_prob, manipulated_count = 0.0, 0
-
-                # Rebalanced Formula: Photograph
-                if hf_probability is not None:
-                    base_score = (0.75 * hf_probability) + (0.15 * freq_prob) + (0.10 * embedding_dist_score)
-                else:
-                    base_score = (0.50 * spatial_prob) + (0.30 * freq_prob) + (0.20 * embedding_dist_score)
-                # Sensor verify reduces AI score if authentic PRNU found
-                ai_probability = max(0.0, base_score - (0.40 * authentic_prnu_prob))
-                
-                model_probs = [hf_probability if hf_probability is not None else spatial_prob, freq_prob, (1.0 - authentic_prnu_prob), embedding_dist_score]
-                variance = np.var(model_probs)
-                confidence_score = max(0.0, 1.0 - (variance * 4))
-                
-                # Predict source from photograph pipeline
-                if ai_probability > 0.5:
-                    predicted_class = "Deepfake_AI"
-                else:
-                    predicted_class = "Real"
+                if not is_illustration:
+                    # ── PHOTOGRAPH FORENSIC PIPELINE ──
+                    freq_logit = self.freq_model(freq_tensor)
+                    freq_prob = torch.sigmoid(self.calibrator(freq_logit)).item()
                     
-            else:
-                # ── ILLUSTRATION / DIFFUSION PIPELINE ──
-                diff_data = self.diffusion_detector.predict(input_tensor)
-                diffusion_score = diff_data["ai_probability"]
-                predicted_class = diff_data["predicted_class"]
-                
-                freq_logit = self.freq_model(freq_tensor) # Basic FFT artifacts
-                freq_prob = torch.sigmoid(self.calibrator(freq_logit)).item()
-                
-                if not fast:
-                    patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
-                else:
-                    patch_prob, manipulated_count = 0.0, 0
-                
-                # Rebalanced Formula: Illustration
-                if hf_probability is not None:
-                    ai_probability = (0.75 * hf_probability) + (0.15 * embedding_dist_score) + (0.10 * freq_prob)
+                    res_tensor = self._get_noise_residual(original_img_cv)
+                    res_logit = self.residual_model(res_tensor)
+                    authentic_prnu_prob = torch.sigmoid(self.calibrator(res_logit)).item()
+                    
+                    if not fast:
+                        patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
+                    else:
+                        patch_prob, manipulated_count = 0.0, 0
+    
+                    # Rebalanced Formula: Photograph
+                    if hf_probability is not None:
+                        base_score = (0.75 * hf_probability) + (0.15 * freq_prob) + (0.10 * embedding_dist_score)
+                    else:
+                        base_score = (0.50 * spatial_prob) + (0.30 * freq_prob) + (0.20 * embedding_dist_score)
+                    # Sensor verify reduces AI score if authentic PRNU found
+                    ai_probability = max(0.0, base_score - (0.40 * authentic_prnu_prob))
+                    
+                    model_probs = [hf_probability if hf_probability is not None else spatial_prob, freq_prob, (1.0 - authentic_prnu_prob), embedding_dist_score]
+                    variance = np.var(model_probs)
+                    confidence_score = max(0.0, 1.0 - (variance * 4))
+                    
+                    # Predict source from photograph pipeline
                     if ai_probability > 0.5:
-                        predicted_class = "Diffusion_AI"
+                        predicted_class = "Deepfake_AI"
                     else:
                         predicted_class = "Real"
+                        
                 else:
-                    ai_probability = (0.50 * diffusion_score) + (0.25 * embedding_dist_score) + (0.25 * freq_prob)
-                
-                model_probs = [hf_probability if hf_probability is not None else diffusion_score, freq_prob, embedding_dist_score]
-                variance = np.var(model_probs)
-                confidence_score = max(0.0, 1.0 - (variance * 3))
-        
+                    # ── ILLUSTRATION / DIFFUSION PIPELINE ──
+                    diff_data = self.diffusion_detector.predict(input_tensor)
+                    diffusion_score = diff_data["ai_probability"]
+                    predicted_class = diff_data["predicted_class"]
+                    
+                    freq_logit = self.freq_model(freq_tensor) # Basic FFT artifacts
+                    freq_prob = torch.sigmoid(self.calibrator(freq_logit)).item()
+                    
+                    if not fast:
+                        patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
+                    else:
+                        patch_prob, manipulated_count = 0.0, 0
+                    
+                    # Rebalanced Formula: Illustration
+                    if hf_probability is not None:
+                        ai_probability = (0.75 * hf_probability) + (0.15 * embedding_dist_score) + (0.10 * freq_prob)
+                        if ai_probability > 0.5:
+                            predicted_class = "Diffusion_AI"
+                        else:
+                            predicted_class = "Real"
+                    else:
+                        ai_probability = (0.50 * diffusion_score) + (0.25 * embedding_dist_score) + (0.25 * freq_prob)
+                    
+                    model_probs = [hf_probability if hf_probability is not None else diffusion_score, freq_prob, embedding_dist_score]
+                    variance = np.var(model_probs)
+                    confidence_score = max(0.0, 1.0 - (variance * 3))
+            
         # --- Risk Categorization ---
         if ai_probability <= 0.40:
             risk_level = "Low"
