@@ -16,6 +16,7 @@ const countMedium = document.getElementById("countMedium");
 const countHigh = document.getElementById("countHigh");
 const clearBtn = document.getElementById("clearBtn");
 const docsBtn = document.getElementById("docsBtn");
+const dashboardBtn = document.getElementById("dashboardBtn");
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -125,6 +126,17 @@ clearBtn.addEventListener("click", async () => {
 docsBtn.addEventListener("click", async () => {
     const { openseek_backend_url = "https://openseek-production.up.railway.app" } = await chrome.storage.local.get("openseek_backend_url");
     chrome.tabs.create({ url: `${openseek_backend_url}/docs` });
+});
+
+dashboardBtn.addEventListener("click", async () => {
+    const { openseek_backend_url = "https://openseek-production.up.railway.app" } = await chrome.storage.local.get("openseek_backend_url");
+    let targetUrl = "https://openseek-six.vercel.app";
+    if (openseek_backend_url.includes("localhost") || openseek_backend_url.includes("127.0.0.1")) {
+        targetUrl = `${openseek_backend_url}/static/index.html`;
+    } else if (openseek_backend_url.includes("railway.app")) {
+        targetUrl = `${openseek_backend_url}/static/index.html`;
+    }
+    chrome.tabs.create({ url: targetUrl });
 });
 
 /* ─── Init ─────────────────────────────────────────────────────────────────── */

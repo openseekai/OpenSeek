@@ -210,7 +210,7 @@ def delete_session(token: str):
     conn.commit()
     conn.close()
 
-def check_and_deduct_credit(user_id: int, amount: int = 1) -> bool:
+def check_and_deduct_credit(user_id: int, amount: int = 1, token: str = None) -> bool:
     """Check if the user has enough credits, and deduct them. Returns True if successful."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
