@@ -340,8 +340,6 @@ def get_user_history(user_id: str, limit: int = 50) -> list[dict]:
     docs = (
         db.collection("scans")
         .where("user_id", "==", user_id)
-        .order_by("timestamp", direction=firestore.Query.DESCENDING)
-        .limit(limit)
         .get()
     )
     history = []
@@ -356,7 +354,9 @@ def get_user_history(user_id: str, limit: int = 50) -> list[dict]:
             "is_ai_generated": d.get("is_ai_generated", False),
             "details": d.get("details", {}),
         })
-    return history
+    # Sort by timestamp descending and apply limit in memory
+    history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return history[:limit]
 
 
 # ── Google/Firebase Auth Login ────────────────────────────────────────────────

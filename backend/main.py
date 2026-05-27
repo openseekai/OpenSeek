@@ -271,7 +271,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                 print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
                 cached_res["remaining_credits"] = user["credits"]
                 return cached_res
-            if not check_and_deduct_credit(user["id"], 1):
+            if not check_and_deduct_credit(user["id"], 1, token):
                 raise HTTPException(status_code=403, detail="Insufficient credits")
             log_scan(
                 user_id=user["id"],
@@ -361,7 +361,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                 print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']}")
                 response_data["remaining_credits"] = user["credits"]
             else:
-                if not check_and_deduct_credit(user["id"], 1):
+                if not check_and_deduct_credit(user["id"], 1, token):
                     raise HTTPException(status_code=403, detail="Insufficient credits")
                 log_scan(
                     user_id=user["id"],
@@ -422,7 +422,7 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
         if cached:
             cached_res = dict(cached)
             if user:
-                if not check_and_deduct_credit(user["id"], 1):
+                if not check_and_deduct_credit(user["id"], 1, token):
                     raise HTTPException(status_code=403, detail="Insufficient credits")
                 log_scan(
                     user_id=user["id"],
@@ -485,7 +485,7 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                 response_data = get_fallback_analysis_result(temp_path)
             
         if user:
-            if not check_and_deduct_credit(user["id"], 1):
+            if not check_and_deduct_credit(user["id"], 1, token):
                 raise HTTPException(status_code=403, detail="Insufficient credits")
             log_scan(
                 user_id=user["id"],
