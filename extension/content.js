@@ -33,11 +33,13 @@ if (window.location.origin === "https://openseek-production.up.railway.app" ||
         chrome.storage.local.get(["openseek_token", "openseek_backend_url"], (res) => {
             if (token !== res.openseek_token || backendUrl !== res.openseek_backend_url) {
                 if (token) {
+                    console.log("[OpenSeek Extension] 🔑 Synced new auth token to extension storage:", token.slice(0, 6) + "...");
                     chrome.storage.local.set({ 
                         openseek_token: token,
                         openseek_backend_url: backendUrl
                     });
                 } else {
+                    console.log("[OpenSeek Extension] 🚪 Token removed/logged out from extension storage.");
                     chrome.storage.local.remove(["openseek_token", "openseek_backend_url"]);
                 }
             }
