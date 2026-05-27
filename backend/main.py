@@ -252,36 +252,53 @@ def calculate_fft_anomaly(image_path: str) -> float:
         print(f"[FFT Fallback Analyzer] Error: {e}")
         return 0.25
 
-def calculate_ela_score(image_path: str) -> float:
+def calculate_ela_analysis(image_path: str) -> tuple[float, Optional[str]]:
     try:
         from PIL import Image, ImageChops
         import numpy as np
-        orig = Image.open(image_path).convert('RGB')
         import tempfile
         import os
+        import io
+        import base64
+        
+        orig = Image.open(image_path).convert('RGB')
+        
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
             tmp_name = tmp.name
         try:
             orig.save(tmp_name, 'JPEG', quality=90)
             resaved = Image.open(tmp_name)
             diff = ImageChops.difference(orig, resaved)
+            
             extrema = diff.getextrema()
             max_diff = max([ex[1] for ex in extrema])
             if max_diff == 0:
                 max_diff = 1
+                
             scale = 255.0 / max_diff
-            diff = ImageChops.constant(diff, scale)
-            diff_gray = diff.convert('L')
+            diff_arr = np.array(diff)
+            # Scale differences to make invisible modifications highly visible to the user
+            enhanced_arr = np.clip(diff_arr * scale, 0, 255).astype(np.uint8)
+            enhanced_diff = Image.fromarray(enhanced_arr)
+            
+            # Compute variance of error levels
+            diff_gray = enhanced_diff.convert('L')
             arr = np.array(diff_gray)
             std_val = np.std(arr)
             score = std_val / 64.0
-            return min(1.0, max(0.0, score))
+            
+            # Convert enhanced diff to JPEG base64 to show as the heatmap
+            buffered = io.BytesIO()
+            enhanced_diff.save(buffered, format="JPEG")
+            base64_heatmap = base64.b64encode(buffered.getvalue()).decode("utf-8")
+            
+            return min(1.0, max(0.0, score)), base64_heatmap
         finally:
             if os.path.exists(tmp_name):
                 os.remove(tmp_name)
     except Exception as e:
         print(f"[ELA Fallback Analyzer] Error: {e}")
-        return 0.25
+        return 0.25, None
 
 def get_fallback_analysis_result(temp_path: str) -> dict:
     """Generates a realistic and highly accurate fallback analysis using lightweight forensic checks."""
@@ -292,7 +309,7 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
         meta = {"has_ai_metadata": False, "suspicion_score": 0.2, "anomalies": []}
         
     fft_score = calculate_fft_anomaly(temp_path)
-    ela_score = calculate_ela_score(temp_path)
+    ela_score, base64_heatmap = calculate_ela_analysis(temp_path)
     meta_score = meta.get("suspicion_score", 0.0)
     
     if meta.get("has_ai_metadata"):
@@ -323,6 +340,8 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
     if confidence < 0.4:
         risk = "Uncertain"
         
+    heatmap_uri = f"data:image/jpeg;base64,{base64_heatmap}" if base64_heatmap else None
+        
     return {
         "is_ai_generated": is_ai,
         "ai_probability": prob,
@@ -330,7 +349,7 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
         "predicted_class": predicted_class,
         "risk_level": risk,
         "confidence_score": confidence,
-        "manipulated_regions_heatmap": None,
+        "manipulated_regions_heatmap": heatmap_uri,
         "patch_manipulated_count": int(prob * 10) if is_ai else 0,
         "embedding_anomaly_score": round(prob * 0.1, 4),
         "face_detected": False
