@@ -428,8 +428,8 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                 
         if response_data is None:
             if _ensemble is not None:
-                # 1. Full Image Analysis (fast mode: skip Grad-CAM + patch scan)
-                full_res = _ensemble.forward_analyze(temp_path, fast=True)
+                # 1. Full Image Analysis (deep mode: include Grad-CAM + patch scan)
+                full_res = _ensemble.forward_analyze(temp_path, fast=False)
                 
                 # 2. Face-Focused Layer (quick detection only, no second full pass)
                 faces = []
@@ -585,8 +585,8 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                 
         if response_data is None:
             if _ensemble is not None:
-                # Full Image Analysis (fast mode: skip Grad-CAM + patch scan)
-                full_res = _ensemble.forward_analyze(temp_path, fast=True)
+                # Full Image Analysis (deep mode: include Grad-CAM + patch scan)
+                full_res = _ensemble.forward_analyze(temp_path, fast=False)
                 
                 # Respect new risk level logic
                 ai_probability = full_res["ai_probability"]
