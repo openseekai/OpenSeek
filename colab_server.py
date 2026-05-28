@@ -608,9 +608,27 @@ if __name__ == "__main__":
         shell = get_ipython().__class__.__name__
         import nest_asyncio
         import threading
+        import subprocess
+        import time
+        import re
         nest_asyncio.apply()
         threading.Thread(target=lambda: uvicorn.run(app, host="127.0.0.1", port=8000), daemon=True).start()
         print("[*] API Server started in background on port 8000 (Notebook mode).")
+        
+        # Start Cloudflare Tunnel
+        print("[*] Starting Cloudflare Tunnel, please wait...")
+        subprocess.Popen("cloudflared tunnel --url http://127.0.0.1:8000 > cloudflare.log 2>&1", shell=True)
+        time.sleep(8)
+        
+        with open("cloudflare.log", "r") as f:
+            logs = f.read()
+            
+        match = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", logs)
+        if match:
+            print("\n🎉 SUCCESS! Copy this URL and set it in Railway:")
+            print(match.group(0))
+        else:
+            print("\n❌ Tunnel URL not found yet. Please view cloudflare.log or run again.")
     except NameError:
         # Standard CLI execution
         uvicorn.run(app, host="127.0.0.1", port=8000)
