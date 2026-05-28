@@ -459,7 +459,10 @@ class AdvancedForensicEnsemble(nn.Module):
             try:
                 with torch.no_grad():
                     out = self.hf_model(img)
-                fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["fake", "deepfake", "synthetic"])), None)
+                # Since the model config labels are inverted:
+                # 'Realism' represents actual Deepfake
+                # 'Deepfake' represents actual Realism
+                fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["realism", "real"])), None)
                 if fake_res:
                     hf_probability = float(fake_res['score'])
             except Exception as e:
