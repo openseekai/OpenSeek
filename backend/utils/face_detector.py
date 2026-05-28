@@ -6,6 +6,13 @@ from __future__ import annotations
 import os
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
+# Monkeypatch protobuf to fix compatibility with newer versions of protobuf
+from google.protobuf import symbol_database, message_factory
+if not hasattr(symbol_database.SymbolDatabase, "GetPrototype"):
+    symbol_database.SymbolDatabase.GetPrototype = lambda self, descriptor: message_factory.GetMessageClass(descriptor)
+if not hasattr(message_factory.MessageFactory, "GetPrototype"):
+    message_factory.MessageFactory.GetPrototype = lambda self, descriptor: message_factory.GetMessageClass(descriptor)
+
 import cv2
 import mediapipe as mp
 import numpy as np
