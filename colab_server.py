@@ -17,6 +17,25 @@ import uvicorn
 from transformers import CLIPProcessor, CLIPModel, pipeline
 import mediapipe as mp
 
+def _sanitize_numpy(val):
+    """Recursively convert NumPy data types to standard Python types."""
+    if isinstance(val, dict):
+        return {k: _sanitize_numpy(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [_sanitize_numpy(v) for v in val]
+    elif isinstance(val, tuple):
+        return tuple(_sanitize_numpy(v) for v in val)
+    elif isinstance(val, np.ndarray):
+        return _sanitize_numpy(val.tolist())
+    elif isinstance(val, (np.bool_, bool)):
+        return bool(val)
+    elif isinstance(val, (np.integer, int)):
+        return int(val)
+    elif isinstance(val, (np.floating, float)):
+        return float(val)
+    return val
+
+
 # Initialize FastAPI App
 app = FastAPI(title="OpenSeek Colab GPU Inference Server")
 
@@ -565,7 +584,7 @@ async def analyze(file: UploadFile = File(...)):
             response_data["risk_level"] = "Uncertain"
             response_data["flag"] = "Low Confidence Detection"
             
-        return response_data
+        return _sanitize_numpy(response_data)
 
     except Exception as e:
         print(f"[Error] Failed to analyze file: {e}")

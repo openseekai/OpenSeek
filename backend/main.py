@@ -23,6 +23,25 @@ from pydantic import BaseModel
 
 from models.advanced_ensemble import AdvancedForensicEnsemble
 from utils.face_detector import get_face_detector
+
+def _sanitize_numpy(val):
+    """Recursively convert NumPy data types to standard Python types."""
+    if isinstance(val, dict):
+        return {k: _sanitize_numpy(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [_sanitize_numpy(v) for v in val]
+    elif isinstance(val, tuple):
+        return tuple(_sanitize_numpy(v) for v in val)
+    elif isinstance(val, np.ndarray):
+        return _sanitize_numpy(val.tolist())
+    elif isinstance(val, (np.bool_, bool)):
+        return bool(val)
+    elif isinstance(val, (np.integer, int)):
+        return int(val)
+    elif isinstance(val, (np.floating, float)):
+        return float(val)
+    return val
+
 # ── Database Cache Initialization ───────────────────────────────────────────
 DB_PATH = "openseek_cache.db"
 
@@ -391,7 +410,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
             if _is_duplicate_scan(user["id"], file_hash):
                 print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
                 cached_res["remaining_credits"] = user["credits"]
-                return cached_res
+                return _sanitize_numpy(cached_res)
             if not check_and_deduct_credit(user["id"], 1, token):
                 raise HTTPException(status_code=403, detail="Insufficient credits")
             cached_res["file_hash"] = file_hash
@@ -405,7 +424,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
             )
             updated_user = get_user_by_session(token)
             cached_res["remaining_credits"] = updated_user["credits"]
-        return cached_res
+        return _sanitize_numpy(cached_res)
 
     try:
         colab_url = os.getenv("COLAB_MODEL_URL") or os.getenv("EXTERNAL_MODEL_URL")
@@ -498,7 +517,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                 response_data["remaining_credits"] = updated_user["credits"]
 
         set_cached_result(file_hash, response_data)
-        return response_data
+        return _sanitize_numpy(response_data)
 
     except Exception as e:
         print(f"[OpenSeek API] Forensic Error: {e}")
@@ -549,7 +568,7 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                 if _is_duplicate_scan(user["id"], file_hash):
                     print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
                     cached_res["remaining_credits"] = user["credits"]
-                    return cached_res
+                    return _sanitize_numpy(cached_res)
                 if not check_and_deduct_credit(user["id"], 1, token):
                     raise HTTPException(status_code=403, detail="Insufficient credits")
                 cached_res["file_hash"] = file_hash
@@ -563,7 +582,7 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                 )
                 updated_user = get_user_by_session(token)
                 cached_res["remaining_credits"] = updated_user["credits"]
-            return cached_res
+            return _sanitize_numpy(cached_res)
 
         colab_url = os.getenv("COLAB_MODEL_URL") or os.getenv("EXTERNAL_MODEL_URL")
         response_data = None
@@ -634,7 +653,7 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                 response_data["remaining_credits"] = updated_user["credits"]
 
         set_cached_result(file_hash, response_data)
-        return response_data
+        return _sanitize_numpy(response_data)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
