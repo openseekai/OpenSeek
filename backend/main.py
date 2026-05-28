@@ -1,4 +1,5 @@
 import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from dotenv import load_dotenv
 load_dotenv()
 import io

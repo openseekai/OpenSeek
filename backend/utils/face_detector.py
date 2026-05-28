@@ -3,6 +3,9 @@ OpenSeek — MediaPipe-based face detector.
 """
 from __future__ import annotations
 
+import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
 import cv2
 import mediapipe as mp
 import numpy as np

@@ -61,7 +61,7 @@ class ContentTypeClassifier(nn.Module):
     def __init__(self, device='cpu'):
         super().__init__()
         self.device = device
-        self.model = models.mobilenet_v3_small(weights="DEFAULT") 
+        self.model = models.mobilenet_v3_small(weights="DEFAULT")
         in_features = self.model.classifier[3].in_features
         self.model.classifier[3] = nn.Linear(in_features, 3)
         self.to(self.device)
@@ -83,7 +83,7 @@ class DiffusionDetector(nn.Module):
         super().__init__()
         self.device = device
         self.classes = ["Real", "Diffusion_AI"]
-        self.model = models.efficientnet_b2(weights="IMAGENET1K_V1") 
+        self.model = models.efficientnet_b2(weights="IMAGENET1K_V1")
         in_features = self.model.classifier[1].in_features
         self.model.classifier[1] = nn.Linear(in_features, 2)
         self.to(self.device)
@@ -96,17 +96,17 @@ class DiffusionDetector(nn.Module):
         with torch.no_grad():
             logits = self.forward(x)
             probs = F.softmax(logits, dim=1).squeeze().cpu().numpy()
-            
+
         pred_idx = np.argmax(probs)
         predicted_class = self.classes[pred_idx]
-        
+
         return {
             "predicted_class": predicted_class,
             "probability_distribution": {
                 "Real": float(probs[0]),
                 "Diffusion_AI": float(probs[1])
             },
-            "ai_probability": float(probs[1]) 
+            "ai_probability": float(probs[1])
         }
 
 
@@ -115,13 +115,13 @@ class CLIPEmbeddingAnalyzer(nn.Module):
         super().__init__()
         self.device = device
         self.has_clip = False
-        
+
         try:
             self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
             self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
             self.model.eval()
             self.has_clip = True
-            
+
             # Precalculated Clustering Centroids (consistent seed)
             np.random.seed(42)
             self.real_centroid = nn.Parameter(
@@ -136,7 +136,7 @@ class CLIPEmbeddingAnalyzer(nn.Module):
     def get_embedding(self, pil_image: Image.Image):
         if not self.has_clip:
             return torch.zeros(1, 512).to(self.device)
-            
+
         inputs = self.processor(images=pil_image, return_tensors="pt").to(self.device)
         with torch.no_grad():
             outputs = self.model.get_image_features(**inputs)
@@ -152,14 +152,14 @@ class CLIPEmbeddingAnalyzer(nn.Module):
     def analyze_anomaly(self, pil_image: Image.Image):
         if not self.has_clip:
             return 0.0
-            
+
         features = self.get_embedding(pil_image)
         with torch.no_grad():
             similarity_to_real = F.cosine_similarity(features, self.real_centroid).item()
             similarity_to_ai = F.cosine_similarity(features, self.diffusion_centroid).item()
-            
+
         diff = similarity_to_ai - similarity_to_real
-        anomaly_score = torch.sigmoid(torch.tensor(diff * 10)).item() 
+        anomaly_score = torch.sigmoid(torch.tensor(diff * 10)).item()
         return anomaly_score
 
 
@@ -167,7 +167,7 @@ class TemperatureScaling(nn.Module):
     def __init__(self, init_temp=1.5):
         super().__init__()
         self.temperature = nn.Parameter(torch.ones(1) * init_temp)
-    
+
     def forward(self, logits):
         return logits / self.temperature
 
@@ -208,7 +208,7 @@ class AdvancedForensicEnsemble(nn.Module):
     def __init__(self, device='cpu'):
         super().__init__()
         self.device = device
-        
+
         # 0. Pre-Classifier (Photo vs Illustration) via MobileNet
         self.content_type_classifier = ContentTypeClassifier(device=self.device)
 
@@ -227,17 +227,17 @@ class AdvancedForensicEnsemble(nn.Module):
         # 2a. Photograph Frequency Model
         self.freq_model = FrequencyCNN()
         self.freq_model.to(self.device).eval()
-        
+
         # 2b. Diffusion Specific Detector (3-class Outputs)
         self.diffusion_detector = DiffusionDetector(device=self.device)
-        
+
         # 3. Residual Noise Model (Photographs only)
         self.residual_model = ResidualCNN()
         self.residual_model.to(self.device).eval()
 
         # 4. CLIP Embedding Analyzer (Clustering)
         self.embedding_analyzer = CLIPEmbeddingAnalyzer(device=self.device)
-        
+
         # 5. Hugging Face Expert Classifier (accurate pre-trained deepfake model)
         self.hf_model = None
         if os.environ.get("LOW_MEMORY") == "1":
@@ -253,7 +253,7 @@ class AdvancedForensicEnsemble(nn.Module):
                 print("[OpenSeek] ✅ Loaded pre-trained HuggingFace Deepfake ViT model")
             except Exception as e:
                 print(f"[OpenSeek] Warning: Failed to load HuggingFace Expert model: {e}")
-        
+
         # Calibration
         self.calibrator = TemperatureScaling()
         self.calibrator.to(self.device)
@@ -264,7 +264,7 @@ class AdvancedForensicEnsemble(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 4)
         ).to(self.device).eval()
-        
+
         self.transform = T.Compose([
             T.Resize((224, 224)),
             T.ToTensor(),
@@ -283,51 +283,51 @@ class AdvancedForensicEnsemble(nn.Module):
         f = np.fft.fft2(img_resized)
         fshift = np.fft.fftshift(f)
         magnitude_spectrum = np.abs(fshift) ** 2
-        
+
         h, w = magnitude_spectrum.shape
         center = (w//2, h//2)
         y, x = np.indices((h, w))
         r = np.sqrt((x - center[0])**2 + (y - center[1])**2)
         r = r.astype(int)
-        
+
         tbin = np.bincount(r.ravel(), magnitude_spectrum.ravel())
         nr = np.bincount(r.ravel())
         radial_profile = tbin / np.maximum(nr, 1)
         radial_profile = radial_profile[:112]
-        
+
         radial_profile = np.log1p(radial_profile)
         radial_profile = (radial_profile - np.min(radial_profile)) / (np.max(radial_profile) - np.min(radial_profile) + 1e-9)
-        
+
         tensor = torch.from_numpy(radial_profile).float().unsqueeze(0)
         return tensor.to(self.device)
-        
+
     def _get_noise_residual(self, original_img_cv):
         img_resized = cv2.resize(original_img_cv, (224, 224))
         blurred = cv2.GaussianBlur(img_resized, (5, 5), 0)
         residual = cv2.absdiff(img_resized, blurred)
-        
+
         pil_residual = Image.fromarray(cv2.cvtColor(residual, cv2.COLOR_BGR2RGB))
         tensor = T.ToTensor()(pil_residual).unsqueeze(0)
         tensor = T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])(tensor)
         return tensor.to(self.device)
-        
+
     def _run_patch_analysis(self, original_img_cv):
         h, w = original_img_cv.shape[:2]
         patch_h, patch_w = h // 8, w // 8
         if patch_h < 10 or patch_w < 10:
             return 0.0, 0
-            
+
         patches = []
         for i in range(8):
             for j in range(8):
                 y1, y2 = i * patch_h, (i + 1) * patch_h
                 x1, x2 = j * patch_w, (j + 1) * patch_w
                 patch = original_img_cv[y1:y2, x1:x2]
-                
+
                 pil_patch = Image.fromarray(cv2.cvtColor(patch, cv2.COLOR_BGR2RGB))
                 tensor = self.transform(pil_patch)
                 patches.append(tensor)
-                
+
         patches_tensor = torch.stack(patches).to(self.device)
         is_cuda = self.device == "cuda" or (isinstance(self.device, torch.device) and self.device.type == "cuda")
         from torch.cuda.amp import autocast
@@ -335,7 +335,7 @@ class AdvancedForensicEnsemble(nn.Module):
             with autocast(enabled=is_cuda):
                 logits = self.spatial_model(patches_tensor)
                 probs = torch.sigmoid(self.calibrator(logits)).squeeze().cpu().numpy()
-            
+
         patch_variance = np.var(probs)
         manipulated_count = int(np.sum(probs > 0.6))
         anomaly_score = min(1.0, (patch_variance * 10) + (manipulated_count / 64.0))
@@ -345,10 +345,10 @@ class AdvancedForensicEnsemble(nn.Module):
         self.spatial_model.zero_grad()
         output = self.spatial_model(input_tensor)
         output.backward()
-        
+
         gradients = self.gradients.cpu().data.numpy()[0]
         activations = self.activations.cpu().data.numpy()[0]
-        
+
         weights = np.mean(gradients, axis=(1, 2))
         cam = np.zeros(activations.shape[1:], dtype=np.float32)
 
@@ -359,12 +359,12 @@ class AdvancedForensicEnsemble(nn.Module):
         cam = cv2.resize(cam, (original_img.shape[1], original_img.shape[0]))
         cam = cam - np.min(cam)
         cam = cam / (np.max(cam) + 1e-9)
-        
+
         heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
         heatmap = np.float32(heatmap) / 255
         cam_img = heatmap + np.float32(original_img) / 255
         cam_img = cam_img / np.max(cam_img)
-        
+
         cam_img_uint8 = np.uint8(255 * cam_img)
         _, buffer = cv2.imencode('.jpg', cam_img_uint8)
         base64_heatmap = base64.b64encode(buffer).decode('utf-8')
@@ -374,16 +374,16 @@ class AdvancedForensicEnsemble(nn.Module):
         img = Image.open(image_path).convert("RGB")
         original_img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         input_tensor = self.transform(img).unsqueeze(0).to(self.device)
-        
+
         is_cuda = self.device == "cuda" or (isinstance(self.device, torch.device) and self.device.type == "cuda")
         from torch.cuda.amp import autocast
-        
+
         # 0. Route Classification via MobileNetV3
         with torch.no_grad():
             with autocast(enabled=is_cuda):
                 content_type = self.content_type_classifier.classify(input_tensor)
         is_illustration = (content_type in ["Digital Illustration", "3D Render"])
-        
+
         # 1. Spatial Model
         if fast:
             with torch.no_grad():
@@ -416,32 +416,32 @@ class AdvancedForensicEnsemble(nn.Module):
             with autocast(enabled=is_cuda):
                 freq_tensor = self._get_fft_magnitude(original_img_cv)
                 embedding_dist_score = self.embedding_analyzer.analyze_anomaly(img)
-                
+
                 if not is_illustration:
                     # ── PHOTOGRAPH FORENSIC PIPELINE ──
                     freq_logit = self.freq_model(freq_tensor)
                     freq_prob = torch.sigmoid(self.calibrator(freq_logit)).item()
-                    
+
                     res_tensor = self._get_noise_residual(original_img_cv)
                     res_logit = self.residual_model(res_tensor)
                     authentic_prnu_prob = torch.sigmoid(self.calibrator(res_logit)).item()
-                    
+
                     if not fast:
                         patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
                     else:
                         patch_prob, manipulated_count = 0.0, 0
-    
+
                     # Rebalanced Formula: Photograph
                     if hf_probability is not None:
                         base_score = (0.75 * hf_probability) + (0.15 * freq_prob) + (0.10 * embedding_dist_score)
                     else:
                         base_score = (0.50 * spatial_prob) + (0.30 * freq_prob) + (0.20 * embedding_dist_score)
                     ai_probability = max(0.0, base_score - (0.40 * authentic_prnu_prob))
-                    
+
                     model_probs = [hf_probability if hf_probability is not None else spatial_prob, freq_prob, (1.0 - authentic_prnu_prob), embedding_dist_score]
                     variance = np.var(model_probs)
                     confidence_score = max(0.0, 1.0 - (variance * 4))
-                    
+
                     if ai_probability > 0.5:
                         predicted_class = "Deepfake_AI"
                     else:
@@ -451,15 +451,15 @@ class AdvancedForensicEnsemble(nn.Module):
                     diff_data = self.diffusion_detector.predict(input_tensor)
                     diffusion_score = diff_data["ai_probability"]
                     predicted_class = diff_data["predicted_class"]
-                    
+
                     freq_logit = self.freq_model(freq_tensor)
                     freq_prob = torch.sigmoid(self.calibrator(freq_logit)).item()
-                    
+
                     if not fast:
                         patch_prob, manipulated_count = self._run_patch_analysis(original_img_cv)
                     else:
                         patch_prob, manipulated_count = 0.0, 0
-                    
+
                     # Rebalanced Formula: Illustration
                     if hf_probability is not None:
                         ai_probability = (0.75 * hf_probability) + (0.15 * embedding_dist_score) + (0.10 * freq_prob)
@@ -469,11 +469,11 @@ class AdvancedForensicEnsemble(nn.Module):
                             predicted_class = "Real"
                     else:
                         ai_probability = (0.50 * diffusion_score) + (0.25 * embedding_dist_score) + (0.25 * freq_prob)
-                    
+
                     model_probs = [hf_probability if hf_probability is not None else diffusion_score, freq_prob, embedding_dist_score]
                     variance = np.var(model_probs)
                     confidence_score = max(0.0, 1.0 - (variance * 3))
-            
+
         # Risk Categorization
         if ai_probability <= 0.40:
             risk_level = "Low"
@@ -481,10 +481,10 @@ class AdvancedForensicEnsemble(nn.Module):
             risk_level = "Medium"
         else:
             risk_level = "High"
-            
+
         if confidence_score < 0.4:
             risk_level = "Uncertain"
-            
+
         return {
             "content_type": content_type,
             "ai_probability": round(ai_probability, 4),
@@ -505,14 +505,14 @@ def load_models():
     global ensemble, face_detector
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[*] Starting OpenSeek Server on device: {device}")
-    
+
     ensemble = AdvancedForensicEnsemble(device=device)
     face_detector = FaceDetector()
-    
+
     if torch.cuda.is_available():
         print("[*] Tesla T4 GPU Detected! Activating cuDNN auto-tuner benchmarks for maximum speed...")
         torch.backends.cudnn.benchmark = True
-        
+
     print("[*] OpenSeek Engine and Face Detector Loaded Successfully")
 
 @app.post("/analyze")
@@ -521,21 +521,21 @@ async def analyze(file: UploadFile = File(...)):
     temp_path = f"temp_{uuid.uuid4()}_{file.filename}"
     with open(temp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-        
+
     try:
         # Colab has a GPU, so we run with fast=False to generate heatmaps & detailed patch scans!
         full_res = ensemble.forward_analyze(temp_path, fast=False)
-        
+
         # Detect faces in BGR image
         img_cv = cv2.imread(temp_path)
         faces = face_detector.detect(img_cv)
-        
+
         final_probability = full_res["ai_probability"]
-        
+
         # If faces found, boost probability slightly (5% boost)
         if faces:
             final_probability = min(1.0, full_res["ai_probability"] * 1.05)
-            
+
         # Re-calc risk level logic
         if final_probability <= 0.40:
             risk = "Low"
@@ -543,11 +543,11 @@ async def analyze(file: UploadFile = File(...)):
             risk = "Medium"
         else:
             risk = "High"
-            
+
         content_type = full_res.get("content_type", "Photograph")
         predicted_class = full_res.get("predicted_class", "Real")
         embedding_score = full_res.get("embedding_anomaly_score", 0.0)
-            
+
         response_data = {
             "is_ai_generated": final_probability > 0.5,
             "ai_probability": round(final_probability, 4),
@@ -560,11 +560,11 @@ async def analyze(file: UploadFile = File(...)):
             "embedding_anomaly_score": embedding_score,
             "face_detected": len(faces) > 0
         }
-        
+
         if full_res["confidence_score"] < 0.4:
             response_data["risk_level"] = "Uncertain"
             response_data["flag"] = "Low Confidence Detection"
-            
+
         return response_data
 
     except Exception as e:

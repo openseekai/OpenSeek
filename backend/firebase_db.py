@@ -21,6 +21,7 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 from threading import Lock
+import numpy as np
 
 # ── Firebase Admin SDK ────────────────────────────────────────────────────────
 
@@ -319,11 +320,36 @@ def add_credits(user_id: str, amount: int) -> int:
 
 # ── Scan History ──────────────────────────────────────────────────────────────
 
+def _sanitize_numpy(val):
+    """Recursively convert NumPy data types to standard Python types."""
+    if isinstance(val, dict):
+        return {k: _sanitize_numpy(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [_sanitize_numpy(v) for v in val]
+    elif isinstance(val, tuple):
+        return tuple(_sanitize_numpy(v) for v in val)
+    elif isinstance(val, np.ndarray):
+        return _sanitize_numpy(val.tolist())
+    elif isinstance(val, (np.bool_, bool)):
+        return bool(val)
+    elif isinstance(val, (np.integer, int)):
+        return int(val)
+    elif isinstance(val, (np.floating, float)):
+        return float(val)
+    return val
+
+
 def log_scan(user_id: str, filename: str, ai_probability: float,
              risk_level: str, is_ai_generated: bool, details: dict) -> None:
     """Log a scan event in the user's history collection."""
     db = _get_db()
     file_hash = details.get("file_hash") if isinstance(details, dict) else None
+    
+    # Sanitize all inputs to convert NumPy types to standard Python types
+    ai_probability = _sanitize_numpy(ai_probability)
+    is_ai_generated = _sanitize_numpy(is_ai_generated)
+    details = _sanitize_numpy(details)
+    
     db.collection("scans").add({
         "user_id": user_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
