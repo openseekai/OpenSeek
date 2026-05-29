@@ -73,6 +73,12 @@ def _sanitize_numpy(val):
         return tuple(_sanitize_numpy(v) for v in val)
     elif isinstance(val, np.ndarray):
         return _sanitize_numpy(val.tolist())
+    elif isinstance(val, (np.bool_, bool)):
+        return bool(val)
+    elif isinstance(val, (np.integer, int)):
+        return int(val)
+    elif isinstance(val, (np.floating, float)):
+        return float(val)
     elif isinstance(val, np.generic):
         return val.item()
     return val

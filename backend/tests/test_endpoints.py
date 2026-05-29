@@ -16,16 +16,17 @@ def client():
     validation logic.
     """
     # Build lightweight stub objects that satisfy main.py's interface
+    import numpy as np
     fake_ensemble = MagicMock()
     fake_ensemble.forward_analyze.return_value = {
-        "ai_probability": 0.15,
-        "is_ai_generated": False,
-        "confidence_score": 0.85,
+        "ai_probability": np.float32(0.15),
+        "is_ai_generated": np.bool_(False),
+        "confidence_score": np.float64(0.85),
         "content_type": "Photograph",
         "predicted_class": "Real",
         "manipulated_regions_heatmap": "",
-        "patch_manipulated_count": 0,
-        "embedding_anomaly_score": 0.05,
+        "patch_manipulated_count": np.int64(0),
+        "embedding_anomaly_score": np.float32(0.05),
     }
 
     fake_video_detector = MagicMock()
