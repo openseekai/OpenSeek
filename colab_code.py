@@ -64,24 +64,73 @@ from transformers import CLIPProcessor, CLIPModel, pipeline
 import mediapipe as mp
 
 def _sanitize_numpy(val):
-    """Recursively convert NumPy data types to standard Python types."""
+    """Recursively convert NumPy and PyTorch data types to standard Python types."""
+    import json
+    try:
+        import numpy as np
+    except ImportError:
+        np = None
+    try:
+        import torch
+    except ImportError:
+        torch = None
+
+    if val is None:
+        return None
+
+    # NumPy types
+    if np is not None:
+        if isinstance(val, (np.bool_, bool)):
+            return bool(val)
+        if isinstance(val, np.integer):
+            return int(val)
+        if isinstance(val, np.floating):
+            return float(val)
+        if isinstance(val, np.ndarray):
+            return [_sanitize_numpy(x) for x in val.tolist()]
+        if isinstance(val, np.generic):
+            try:
+                return _sanitize_numpy(val.item())
+            except Exception:
+                pass
+
+    # PyTorch Tensors
+    if torch is not None:
+        if isinstance(val, torch.Tensor):
+            try:
+                if val.dim() == 0:
+                    return _sanitize_numpy(val.item())
+                return [_sanitize_numpy(x) for x in val.tolist()]
+            except Exception:
+                pass
+
+    # Collections
     if isinstance(val, dict):
-        return {k: _sanitize_numpy(v) for k, v in val.items()}
-    elif isinstance(val, list):
-        return [_sanitize_numpy(v) for v in val]
-    elif isinstance(val, tuple):
-        return tuple(_sanitize_numpy(v) for v in val)
-    elif isinstance(val, np.ndarray):
-        return _sanitize_numpy(val.tolist())
-    elif isinstance(val, (np.bool_, bool)):
-        return bool(val)
-    elif isinstance(val, (np.integer, int)):
-        return int(val)
-    elif isinstance(val, (np.floating, float)):
-        return float(val)
-    elif isinstance(val, np.generic):
-        return val.item()
-    return val
+        return {str(k): _sanitize_numpy(v) for k, v in val.items()}
+    if isinstance(val, (list, tuple, set)):
+        return [_sanitize_numpy(x) for x in val]
+
+    # Date/Time
+    from datetime import datetime, date
+    if isinstance(val, (datetime, date)):
+        return val.isoformat()
+
+    # Standard Primitives
+    if isinstance(val, (bool, int, float, str)):
+        if isinstance(val, bool):
+            return bool(val)
+        if isinstance(val, int):
+            return int(val)
+        if isinstance(val, float):
+            return float(val)
+        return str(val)
+
+    # Fallback
+    try:
+        json.dumps(val)
+        return val
+    except (TypeError, OverflowError):
+        return str(val)
 
 
 # Initialize FastAPI App

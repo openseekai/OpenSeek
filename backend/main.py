@@ -24,25 +24,7 @@ from pydantic import BaseModel
 from models.advanced_ensemble import AdvancedForensicEnsemble
 from utils.face_detector import get_face_detector
 
-def _sanitize_numpy(val):
-    """Recursively convert NumPy data types to standard Python types."""
-    if isinstance(val, dict):
-        return {k: _sanitize_numpy(v) for k, v in val.items()}
-    elif isinstance(val, list):
-        return [_sanitize_numpy(v) for v in val]
-    elif isinstance(val, tuple):
-        return tuple(_sanitize_numpy(v) for v in val)
-    elif isinstance(val, np.ndarray):
-        return _sanitize_numpy(val.tolist())
-    elif isinstance(val, (np.bool_, bool)):
-        return bool(val)
-    elif isinstance(val, (np.integer, int)):
-        return int(val)
-    elif isinstance(val, (np.floating, float)):
-        return float(val)
-    elif isinstance(val, np.generic):
-        return val.item()
-    return val
+from utils.serialization import sanitize_numpy as _sanitize_numpy
 
 # ── Database Cache Initialization ───────────────────────────────────────────
 DB_PATH = "openseek_cache.db"

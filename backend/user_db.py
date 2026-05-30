@@ -257,25 +257,7 @@ def add_credits(user_id: int, amount: int) -> int:
 
 def log_scan(user_id: int, filename: str, ai_probability: float, risk_level: str, is_ai_generated: bool, details: dict):
     """Log an image analysis event in user history."""
-    import numpy as np
-    def _local_sanitize(val):
-        if isinstance(val, dict):
-            return {k: _local_sanitize(v) for k, v in val.items()}
-        elif isinstance(val, list):
-            return [_local_sanitize(v) for v in val]
-        elif isinstance(val, tuple):
-            return tuple(_local_sanitize(v) for v in val)
-        elif isinstance(val, np.ndarray):
-            return _local_sanitize(val.tolist())
-        elif isinstance(val, (np.bool_, bool)):
-            return bool(val)
-        elif isinstance(val, (np.integer, int)):
-            return int(val)
-        elif isinstance(val, (np.floating, float)):
-            return float(val)
-        elif isinstance(val, np.generic):
-            return val.item()
-        return val
+    from utils.serialization import sanitize_numpy as _local_sanitize
 
     timestamp = datetime.now(timezone.utc).isoformat()
     ai_probability = _local_sanitize(ai_probability)

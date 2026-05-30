@@ -320,23 +320,7 @@ def add_credits(user_id: str, amount: int) -> int:
 
 # ── Scan History ──────────────────────────────────────────────────────────────
 
-def _sanitize_numpy(val):
-    """Recursively convert NumPy data types to standard Python types."""
-    if isinstance(val, dict):
-        return {k: _sanitize_numpy(v) for k, v in val.items()}
-    elif isinstance(val, list):
-        return [_sanitize_numpy(v) for v in val]
-    elif isinstance(val, tuple):
-        return tuple(_sanitize_numpy(v) for v in val)
-    elif isinstance(val, np.ndarray):
-        return _sanitize_numpy(val.tolist())
-    elif isinstance(val, (np.bool_, bool)):
-        return bool(val)
-    elif isinstance(val, (np.integer, int)):
-        return int(val)
-    elif isinstance(val, (np.floating, float)):
-        return float(val)
-    return val
+from utils.serialization import sanitize_numpy as _sanitize_numpy
 
 
 def log_scan(user_id: str, filename: str, ai_probability: float,
