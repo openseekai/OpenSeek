@@ -252,7 +252,11 @@ def analyze_image(image_path: str) -> dict:
         for name, pipe in _classifiers.items():
             try:
                 out = pipe(pil_img) # Changed img_pil to pil_img
-                fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["fake", "deepfake", "synthetic"])), None)
+                if name == "Deep-Fake-Detector-v2-Model":
+                    # Since this model config labels are inverted: 'Realism' represents actual Deepfake
+                    fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["realism", "real"])), None)
+                else:
+                    fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["fake", "deepfake", "synthetic"])), None)
                 if fake_res: m_results[name] = float(fake_res['score'])
             except Exception as e:
                 print(f"[OpenSeek] Expert sub-model error: {e}")
