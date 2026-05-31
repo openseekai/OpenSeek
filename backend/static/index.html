@@ -221,7 +221,46 @@
                 </div>
             </div>
         </div>
+    <div class="modal-overlay" id="extension-modal" onclick="app.closeExtensionModal(event)">
+        <div class="modal-box glass-panel" onclick="event.stopPropagation()" style="max-width: 500px;">
+            <button class="modal-close" onclick="app.closeExtensionModal(event)">&times;</button>
+            <div class="modal-header" style="text-align: center; margin-bottom: 25px;">
+                <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 5px;">Install OpenSeek Extension</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">Follow these 3 simple steps to add the extension to Chrome</p>
+            </div>
+            
+            <div class="modal-content-grid" style="gap: 20px;">
+                <div style="display: flex; gap: 15px; align-items: flex-start;">
+                    <div style="background: var(--accent-primary); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 14px;">1</div>
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px; font-size: 15px; font-weight: 600;">Unzip the Download</strong>
+                        <span style="font-size: 13px; color: var(--text-muted); line-height: 1.4; display: block;">Extract the downloaded <code>openseek_chrome_extension.zip</code> file onto your computer.</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; align-items: flex-start;">
+                    <div style="background: var(--accent-primary); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 14px;">2</div>
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px; font-size: 15px; font-weight: 600;">Open Extensions Page</strong>
+                        <span style="font-size: 13px; color: var(--text-muted); line-height: 1.4; display: block;">Open a new tab and navigate to <code style="user-select: all; cursor: pointer; color: var(--accent-secondary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px;" onclick="navigator.clipboard.writeText('chrome://extensions'); app.showToast('Copied chrome://extensions to clipboard!');">chrome://extensions</code>.</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; align-items: flex-start;">
+                    <div style="background: var(--accent-primary); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 14px;">3</div>
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px; font-size: 15px; font-weight: 600;">Load Unpacked Extension</strong>
+                        <span style="font-size: 13px; color: var(--text-muted); line-height: 1.4; display: block;">Enable <strong>Developer Mode</strong> (top right toggle) and click <strong>Load unpacked</strong>. Select the extracted folder.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; justify-content: center; width: 100%;">
+                <button class="btn btn-primary" onclick="app.closeExtensionModal(event)" style="width: 100%;">Got it, let's go!</button>
+            </div>
+        </div>
     </div>
+
 
     <!-- Notification Toast -->
     <div class="toast" id="toast-banner">

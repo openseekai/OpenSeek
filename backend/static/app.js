@@ -42,6 +42,7 @@ class OpenSeekDashboard {
         
         // Modal
         this.detailModal = document.getElementById("detail-modal");
+        this.extensionModal = document.getElementById("extension-modal");
         
         // Toasts
         this.toast = document.getElementById("toast-banner");
@@ -83,6 +84,9 @@ class OpenSeekDashboard {
         const downloadBtn = document.getElementById("download-extension-btn");
         if (downloadBtn) {
             downloadBtn.href = `${API_BASE}/download-extension`;
+            downloadBtn.addEventListener('click', (e) => {
+                this.openExtensionModal();
+            });
         }
         
         if (this.token) {
@@ -596,6 +600,18 @@ class OpenSeekDashboard {
 
     closeModal(e) {
         this.detailModal.classList.remove('active');
+    }
+
+    openExtensionModal() {
+        if (this.extensionModal) {
+            this.extensionModal.classList.add('active');
+        }
+    }
+
+    closeExtensionModal(e) {
+        if (this.extensionModal) {
+            this.extensionModal.classList.remove('active');
+        }
     }
 
     // Trigger file chooser
