@@ -74,8 +74,8 @@ class OpenSeekDashboard {
     init() {
         this.setupDragAndDrop();
         
-        // Theme initialization (default to light)
-        this.theme = localStorage.getItem("openseek_theme") || "light";
+        // Theme initialization (default to dark)
+        this.theme = localStorage.getItem("openseek_theme") || "dark";
         document.documentElement.setAttribute("data-theme", this.theme);
         this.updateThemeIcon();
         

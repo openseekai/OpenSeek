@@ -38,15 +38,17 @@
       <div class="stat-value" id="countHigh">0</div>
       <div class="stat-label">🔴 High</div>
     </div>
-  <!-- Diagnostics Row -->
-  <div style="margin: 8px 12px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.78em; color: #ccc; border: 1px solid rgba(255,255,255,0.08); text-align: left;">
-    <div style="display:flex; justify-content:space-between; margin-bottom: 4px; gap: 8px;">
-      <span>Backend:</span>
-      <strong id="diagBackend" style="color: #fff; word-break: break-all; text-align: right;">-</strong>
+  </div>
+
+  <!-- Diagnostics Panel -->
+  <div class="diagnostics-panel">
+    <div class="diag-row">
+      <span class="diag-label">Backend:</span>
+      <strong id="diagBackend" class="diag-value">-</strong>
     </div>
-    <div style="display:flex; justify-content:space-between; gap: 8px;">
-      <span>Token:</span>
-      <strong id="diagToken" style="color: #fff; text-align: right;">-</strong>
+    <div class="diag-row">
+      <span class="diag-label">Token:</span>
+      <strong id="diagToken" class="diag-value">-</strong>
     </div>
   </div>
 
@@ -70,7 +72,8 @@
   <!-- Footer -->
   <div class="footer">
     <button class="btn btn-ghost" id="clearBtn">Clear History</button>
-    <button class="btn btn-primary" id="docsBtn">API Docs ↗</button>
+    <button class="btn btn-ghost" id="docsBtn">API Docs ↗</button>
+    <button class="btn btn-primary" id="dashboardBtn">Dashboard ↗</button>
   </div>
 
   <script src="popup.js"></script>

@@ -595,6 +595,21 @@ class AdvancedForensicEnsemble(nn.Module):
             heatmap_base64 = self.calculate_gradcam(input_tensor, original_img_cv)
             input_tensor.requires_grad = False
 
+        # Run Hugging Face expert model inference
+        hf_probability = None
+        if self.hf_model:
+            try:
+                with torch.no_grad():
+                    out = self.hf_model(img)
+                # Since the model config labels are inverted:
+                # 'Realism' represents actual Deepfake
+                # 'Deepfake' represents actual Realism
+                fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["realism", "real"])), None)
+                if fake_res:
+                    hf_probability = float(fake_res['score'])
+            except Exception as e:
+                print(f"[OpenSeek HF] Inference error: {e}")
+
         # Check if face exists in image
         has_face = False
         try:
@@ -713,14 +728,24 @@ class AdvancedForensicEnsemble(nn.Module):
                     ai_probability = 0.22
             elif meta.get("has_ai_metadata"):
                 ai_probability = 0.98
+            elif hf_probability is not None:
+                ai_probability = hf_probability
+                confidence_score = 0.90
             else:
                 # Balanced heuristic weighting for general backgrounds
                 heuristic_prob = (0.35 * fft_score) + (0.35 * ela_score) + (0.30 * meta_score)
                 # Combine the neural models predictions (60% weight) with deterministic heuristics (40% weight)
                 ai_probability = (0.60 * neural_prob) + (0.40 * heuristic_prob)
+                confidence_score = 0.85
+            
+            # Calibrate the probability to perfectly align the decision threshold
+            if hf_probability is not None:
+                if ai_probability < 0.50:
+                    ai_probability = (ai_probability / 0.50) * 0.45
+                else:
+                    ai_probability = 0.50 + ((ai_probability - 0.50) / 0.50) * 0.45
             
             ai_probability = round(min(0.99, max(0.01, ai_probability)), 4)
-            confidence_score = 0.85
             
             if ai_probability > 0.5:
                 predicted_class = "Diffusion_AI" if is_illustration else "Deepfake_AI"
@@ -741,23 +766,9 @@ class AdvancedForensicEnsemble(nn.Module):
                 "risk_level": risk_level,
                 "manipulated_regions_heatmap": f"data:image/jpeg;base64,{ela_heatmap_b64}" if ela_heatmap_b64 else None,
                 "patch_manipulated_count": int(ela_score * 100),
-                "embedding_anomaly_score": round(meta_score, 4)
+                "embedding_anomaly_score": round(meta_score, 4),
+                "face_detected": has_face
             }
-
-        # Run Hugging Face expert model inference
-        hf_probability = None
-        if self.hf_model:
-            try:
-                with torch.no_grad():
-                    out = self.hf_model(img)
-                # Since the model config labels are inverted:
-                # 'Realism' represents actual Deepfake
-                # 'Deepfake' represents actual Realism
-                fake_res = next((r for r in out if any(l in r['label'].lower() for l in ["realism", "real"])), None)
-                if fake_res:
-                    hf_probability = float(fake_res['score'])
-            except Exception as e:
-                print(f"[OpenSeek HF] Inference error: {e}")
 
         with torch.no_grad():
             with autocast(enabled=is_cuda):
@@ -824,10 +835,10 @@ class AdvancedForensicEnsemble(nn.Module):
                         confidence_score = max(0.0, 1.0 - (variance * 3))
         # Calibrate the probability to perfectly align the decision threshold
         if hf_probability is not None:
-            if ai_probability < 0.30:
-                ai_probability = (ai_probability / 0.30) * 0.25
+            if ai_probability < 0.50:
+                ai_probability = (ai_probability / 0.50) * 0.45
             else:
-                ai_probability = 0.50 + ((ai_probability - 0.30) / 0.70) * 0.50
+                ai_probability = 0.50 + ((ai_probability - 0.50) / 0.50) * 0.45
             # Update predicted_class based on calibrated probability
             if ai_probability > 0.5:
                 predicted_class = "Diffusion_AI" if is_illustration else "Deepfake_AI"
@@ -853,7 +864,8 @@ class AdvancedForensicEnsemble(nn.Module):
             "risk_level": risk_level,
             "manipulated_regions_heatmap": f"data:image/jpeg;base64,{heatmap_base64}" if heatmap_base64 else None,
             "patch_manipulated_count": manipulated_count,
-            "embedding_anomaly_score": round(embedding_dist_score, 4)
+            "embedding_anomaly_score": round(embedding_dist_score, 4),
+            "face_detected": has_face
         }
 
 # Global instances loaded at startup

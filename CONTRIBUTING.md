@@ -29,8 +29,8 @@ We follow a standard GitHub Fork & Pull Request workflow:
 1. **Fork** the repository on GitHub.
 2. **Clone** your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/OpenSeek.git
-   cd OpenSeek
+   git clone https://github.com/YOUR_USERNAME/OpenSeekAI.git
+   cd OpenSeekAI
    ```
 3. **Backend Setup**:
    ```bash

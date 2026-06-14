@@ -5,32 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenSeek — Deepfake Forensic Dashboard</title>
     <link rel="icon" type="image/png" href="/static/logo.png">
-    <link rel="stylesheet" href="/static/style.css?v=6">
+    <link rel="stylesheet" href="/static/style.css?v=7">
 </head>
 <body>
 
     <!-- Header Navigation -->
     <header>
         <div class="logo">
-            <img src="/static/logo.png" alt="OpenSeek Logo" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+            <img src="/static/logo.png" alt="OpenSeek Logo" class="logo-img">
             <span>OpenSeek</span>
         </div>
         <div class="nav-actions">
             <!-- Theme Toggle Button -->
-            <button class="btn btn-secondary theme-toggle-btn" id="theme-toggle" onclick="app.toggleTheme()" style="padding: 8px; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;" title="Toggle Light/Dark Theme">
-                <svg id="theme-toggle-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor;">
+            <button class="btn btn-secondary theme-toggle-btn" id="theme-toggle" onclick="app.toggleTheme()" title="Toggle Light/Dark Theme">
+                <svg id="theme-toggle-icon" viewBox="0 0 24 24">
                     <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>
                 </svg>
             </button>
             <div id="header-user-info" class="user-badge hidden">
                 <span class="user-email" id="header-email">user@openseek.ai</span>
                 <span class="credits-pill">
-                    <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24">
+                    <svg viewBox="0 0 24 24">
                         <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
                     </svg>
                     <span id="header-credits">100</span>
                 </span>
-                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="app.logout()">Logout</button>
+                <button class="btn btn-danger" onclick="app.logout()">Logout</button>
             </div>
         </div>
     </header>
@@ -41,7 +41,7 @@
         <!-- 1. Authentication View -->
         <section id="auth-section" class="auth-container glass-panel">
             <div class="auth-intro">
-                <img src="/static/logo.png" alt="OpenSeek Logo" style="width: 64px; height: 64px; border-radius: 50%; margin-bottom: 15px; box-shadow: 0 0 20px rgba(138, 70, 255, 0.3); object-fit: cover;">
+                <img src="/static/logo.png" alt="OpenSeek Logo" class="auth-logo">
                 <h2>Forensic Portal</h2>
                 <p>Sign in to scan images, log scans, and view credits.</p>
             </div>
@@ -115,12 +115,12 @@
                 </div>
 
                 <!-- Chrome Extension Download Section -->
-                <div class="extension-download-card" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-color); text-align: center;">
-                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+                <div class="extension-download-card">
+                    <div class="extension-info-text">
                         Analyze web images directly with our browser tool.
                     </div>
-                    <a id="download-extension-btn" href="/download-extension" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; text-decoration: none;">
-                        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: currentColor;">
+                    <a id="download-extension-btn" href="/download-extension" class="btn btn-primary download-btn">
+                        <svg viewBox="0 0 24 24">
                             <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
                         </svg>
                         Download Extension (ZIP)
@@ -128,42 +128,109 @@
                 </div>
             </div>
 
-            <!-- Right Side: Diagnostic Scans History Table (Universal Width) -->
-            <div id="history-section" class="glass-panel history-section hidden" style="margin-top: 0;">
-                <div class="history-header">
+            <!-- Right Side: Scanner Card & History Section (Stacked) -->
+            <div class="dashboard-right-col">
+                
+                <!-- Direct Scanner Card -->
+                <div class="scanner-card glass-panel">
                     <h3 class="card-title">
                         <svg viewBox="0 0 24 24">
-                            <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
                         </svg>
-                        Forensic Scan Log
+                        Direct Forensic Scanner
                     </h3>
-                </div>
-                
-                <div class="table-wrapper">
-                    <table class="history-table">
-                        <thead>
-                            <tr>
-                                <th>Scanned Image</th>
-                                <th>Timestamp</th>
-                                <th>Prediction</th>
-                                <th>Authenticity</th>
-                                <th>Risk Index</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-table-body">
-                            <!-- History injected here -->
-                        </tbody>
-                    </table>
+                    
+                    <div class="dropzone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                            </svg>
+                        </div>
+                        <h3>Drag & drop an image here, or click to browse</h3>
+                        <p>Supports PNG, JPG, JPEG, WEBP up to 10MB</p>
+                        <span class="btn btn-secondary">Browse Image</span>
+                        <input type="file" id="file-input" class="file-input" accept="image/*" onchange="app.handleFileSelect(event)">
+                    </div>
+
+                    <!-- Progress Indicator -->
+                    <div class="scan-progress-container" id="scan-progress-box">
+                        <div class="progress-header">
+                            <span id="scan-status-text">Uploading image...</span>
+                            <span id="scan-progress-percent">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="scan-progress-fill"></div>
+                        </div>
+                    </div>
+
+                    <!-- Scan Results Display -->
+                    <div class="scan-result-panel" id="scan-result-box">
+                        <div class="result-gauge-box">
+                            <div class="gauge-circle" id="result-radial-gauge">
+                                <span class="gauge-score" id="result-score">0%</span>
+                                <span class="gauge-label">Authenticity</span>
+                            </div>
+                            <div id="result-badge-container" class="result-badge-wrap"></div>
+                        </div>
+                        <div class="result-details-box">
+                            <div class="result-row">
+                                <span class="result-row-label">Verdict Classification:</span>
+                                <span class="result-row-value" id="result-class">-</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-row-label">Content Profile:</span>
+                                <span class="result-row-value" id="result-content-type">-</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-row-label">Face Verification:</span>
+                                <span class="result-row-value" id="result-face-verify">-</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="result-row-label">Anomaly Index:</span>
+                                <span class="result-row-value" id="result-anomaly-score">-</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Empty State -->
-                <div id="history-empty" class="empty-state">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2zm0 8H7v-2h10v2z"/>
-                    </svg>
-                    <p>No scans performed yet. Use the Chrome extension to analyze images.</p>
+                <!-- History Log Table -->
+                <div id="history-section" class="glass-panel history-section hidden">
+                    <div class="history-header">
+                        <h3 class="card-title">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                            </svg>
+                            Forensic Scan Log
+                        </h3>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Scanned Image</th>
+                                    <th>Timestamp</th>
+                                    <th>Prediction</th>
+                                    <th>Authenticity</th>
+                                    <th>Risk Index</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body">
+                                <!-- Injected dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="history-empty" class="empty-state">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2zm0 8H7v-2h10v2z"/>
+                        </svg>
+                        <p>No scans performed yet. Use the Chrome extension or upload above to analyze images.</p>
+                    </div>
                 </div>
+
             </div>
         </section>
 
@@ -179,7 +246,6 @@
             </div>
             
             <div class="modal-content-grid">
-                
                 <div class="modal-section-title">Forensic Results</div>
                 <div class="result-row">
                     <span class="result-row-label">Risk Assessment</span>
@@ -221,6 +287,9 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Installation Modal -->
     <div class="modal-overlay" id="extension-modal" onclick="app.closeExtensionModal(event)">
         <div class="modal-box glass-panel" onclick="event.stopPropagation()" style="max-width: 500px;">
             <button class="modal-close" onclick="app.closeExtensionModal(event)">&times;</button>
@@ -261,7 +330,6 @@
         </div>
     </div>
 
-
     <!-- Notification Toast -->
     <div class="toast" id="toast-banner">
         <span id="toast-msg">Success</span>
@@ -271,6 +339,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
-    <script src="/static/app.js?v=6"></script>
+    <script src="/static/app.js?v=7"></script>
 </body>
 </html>

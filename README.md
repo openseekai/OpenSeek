@@ -228,7 +228,7 @@ Distributed under the **MIT License**. See the `LICENSE` file for more informati
 
 ## 👥 Contributors
 
-This project is actively maintained by [Yash Bansal](https://github.com/yashbansal-dev). Feel free to reach out for collaborations!
+This project is actively maintained by [Yash Bansal](https://github.com/yashbansal-dev) under the [OpenSeek AI](https://github.com/openseekai) organization. Feel free to reach out for collaborations!
 
 ---
 

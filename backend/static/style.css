@@ -1,42 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --bg-primary: #f8fafc;
-    --bg-secondary: rgba(255, 255, 255, 0.85);
-    --bg-card: rgba(255, 255, 255, 0.95);
-    --bg-header: rgba(255, 255, 255, 0.8);
-    --bg-input: rgba(0, 0, 0, 0.03);
-    --bg-btn-secondary: rgba(0, 0, 0, 0.05);
-    --border-color: rgba(0, 0, 0, 0.08);
-    --border-hover: rgba(124, 58, 237, 0.4);
-    
-    --accent-primary: #7c3aed;
-    --accent-primary-rgb: 124, 58, 237;
-    --accent-secondary: #06b6d4;
-    --accent-secondary-rgb: 6, 182, 212;
-    
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #64748b;
-    
-    --color-low: #10b981;
-    --color-medium: #f59e0b;
-    --color-high: #ef4444;
-    --color-uncertain: #64748b;
-    
-    --radial-glow-1: rgba(124, 58, 237, 0.04);
-    --radial-glow-2: rgba(6, 182, 212, 0.03);
-    --shadow-glow: 0 8px 32px 0 rgba(148, 163, 184, 0.12);
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    
-    --border-dropzone: rgba(0, 0, 0, 0.12);
-    --bg-dropzone: rgba(0, 0, 0, 0.01);
-    --bg-dropzone-hover: rgba(124, 58, 237, 0.04);
-    --bg-modal-overlay: rgba(15, 23, 42, 0.4);
-    --shadow-inset-progress: inset 0 0 20px rgba(148, 163, 184, 0.15);
-}
-
-[data-theme="dark"] {
     --bg-primary: #0a0b10;
     --bg-secondary: rgba(18, 20, 32, 0.75);
     --bg-card: rgba(22, 25, 44, 0.45);
@@ -63,12 +27,48 @@
     --radial-glow-1: rgba(138, 70, 255, 0.08);
     --radial-glow-2: rgba(0, 242, 254, 0.05);
     --shadow-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     
     --border-dropzone: rgba(255, 255, 255, 0.15);
     --bg-dropzone: rgba(255, 255, 255, 0.01);
     --bg-dropzone-hover: rgba(138, 70, 255, 0.03);
     --bg-modal-overlay: rgba(5, 6, 10, 0.85);
     --shadow-inset-progress: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="light"] {
+    --bg-primary: #f8fafc;
+    --bg-secondary: rgba(255, 255, 255, 0.85);
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --bg-header: rgba(255, 255, 255, 0.8);
+    --bg-input: rgba(0, 0, 0, 0.03);
+    --bg-btn-secondary: rgba(0, 0, 0, 0.05);
+    --border-color: rgba(0, 0, 0, 0.08);
+    --border-hover: rgba(124, 58, 237, 0.4);
+    
+    --accent-primary: #7c3aed;
+    --accent-primary-rgb: 124, 58, 237;
+    --accent-secondary: #06b6d4;
+    --accent-secondary-rgb: 6, 182, 212;
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    
+    --color-low: #10b981;
+    --color-medium: #f59e0b;
+    --color-high: #ef4444;
+    --color-uncertain: #64748b;
+    
+    --radial-glow-1: rgba(124, 58, 237, 0.04);
+    --radial-glow-2: rgba(6, 182, 212, 0.03);
+    --shadow-glow: 0 8px 32px 0 rgba(148, 163, 184, 0.12);
+    
+    --border-dropzone: rgba(0, 0, 0, 0.12);
+    --bg-dropzone: rgba(0, 0, 0, 0.01);
+    --bg-dropzone-hover: rgba(124, 58, 237, 0.04);
+    --bg-modal-overlay: rgba(15, 23, 42, 0.4);
+    --shadow-inset-progress: inset 0 0 20px rgba(148, 163, 184, 0.15);
 }
 
 * {
@@ -936,3 +936,104 @@ table.history-table tr:hover td {
     width: 18px;
     height: 18px;
 }
+
+/* Redesigned Logo & Decorative Elements */
+.logo-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+    border: 1.5px solid rgba(0, 229, 255, 0.4);
+    object-fit: cover;
+    transition: var(--transition-smooth);
+}
+
+.logo:hover .logo-img {
+    transform: rotate(-5deg) scale(1.05);
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+}
+
+.auth-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+    border: 2px solid rgba(0, 229, 255, 0.5);
+    object-fit: cover;
+    transition: var(--transition-smooth);
+}
+
+.auth-logo:hover {
+    transform: scale(1.08) rotate(3deg);
+    box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
+}
+
+/* Right Dashboard Main Layout column */
+.dashboard-right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    width: 100%;
+}
+
+/* Extension Download Panel inside Profile Card */
+.extension-download-card {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.extension-info-text {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.download-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    text-decoration: none;
+}
+
+/* Theme Toggle button formatting */
+.theme-toggle-btn {
+    padding: 8px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-btn-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.theme-toggle-btn:hover {
+    background: var(--border-hover);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 12px rgba(var(--accent-primary-rgb), 0.25);
+    transform: scale(1.05);
+}
+
+.theme-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+/* Scan details layout improvements */
+.result-badge-wrap {
+    margin-top: 15px;
+}
+
