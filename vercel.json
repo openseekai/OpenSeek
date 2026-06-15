@@ -6,7 +6,7 @@
       "destination": "/backend/static/:path*"
     },
     {
-      "source": "/((?!backend/|static/).*)",
+      "source": "/:path((?!backend|static).*)",
       "destination": "/backend/static/index.html"
     }
   ]
