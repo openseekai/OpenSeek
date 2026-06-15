@@ -7,6 +7,7 @@ class OpenSeekDashboard {
         this.token = localStorage.getItem("openseek_token") || null;
         this.user = null;
         this.history = [];
+        this.historyFilter = 'all';
         this.currentUploadFile = null;
         
         // DOM Elements
@@ -337,6 +338,7 @@ class OpenSeekDashboard {
         this.dashboardSection.classList.remove('hidden');
         this.historySection.classList.remove('hidden');
         this.headerUserInfo.classList.remove('hidden');
+        this.resetScanner();
         
         if (this.user) {
             this.headerEmail.innerText = this.user.email;
@@ -657,14 +659,21 @@ class OpenSeekDashboard {
     renderHistory() {
         this.historyTableBody.innerHTML = "";
         
-        if (this.history.length === 0) {
+        let filtered = this.history || [];
+        if (this.historyFilter === 'ai') {
+            filtered = filtered.filter(item => item.is_ai_generated);
+        } else if (this.historyFilter === 'authentic') {
+            filtered = filtered.filter(item => !item.is_ai_generated);
+        }
+
+        if (filtered.length === 0) {
             this.historyEmpty.style.display = 'block';
             return;
         }
         
         this.historyEmpty.style.display = 'none';
         
-        this.history.forEach((scan, idx) => {
+        filtered.forEach((scan) => {
             const tr = document.createElement("tr");
             
             // Format dates
@@ -674,6 +683,8 @@ class OpenSeekDashboard {
             const authScorePercent = Math.round((1 - scan.ai_probability) * 100);
             const riskClass = this.getRiskClass(scan.risk_level);
             const dotClass = scan.is_ai_generated ? 'pulse-dot-red' : 'pulse-dot-green';
+            
+            const originalIdx = this.history.indexOf(scan);
             
             tr.innerHTML = `
                 <td><strong>${this.escapeHtml(scan.filename)}</strong></td>
@@ -693,11 +704,35 @@ class OpenSeekDashboard {
                     </span>
                 </td>
                 <td>
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="app.openDetailModal(${idx})">View Report</button>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="app.openDetailModal(${originalIdx})">View Report</button>
                 </td>
             `;
             this.historyTableBody.appendChild(tr);
         });
+    }
+
+    setHistoryFilter(filter) {
+        this.historyFilter = filter;
+        
+        // Update active class on filter buttons
+        const buttons = document.querySelectorAll('.btn-filter');
+        buttons.forEach(btn => {
+            if (btn.getAttribute('onclick').includes(filter)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        this.renderHistory();
+    }
+
+    resetScanner() {
+        if (this.scanResultBox) this.scanResultBox.style.display = 'none';
+        if (this.scanProgressBox) this.scanProgressBox.style.display = 'none';
+        if (this.dropZone) this.dropZone.style.display = 'flex';
+        const fileInput = document.getElementById('file-input');
+        if (fileInput) fileInput.value = '';
     }
 
     escapeHtml(text) {
@@ -795,6 +830,7 @@ class OpenSeekDashboard {
         }
 
         this.currentUploadFile = file;
+        if (this.dropZone) this.dropZone.style.display = 'none';
         this.scanResultBox.style.display = 'none';
         this.scanProgressBox.style.display = 'flex';
         
@@ -866,11 +902,13 @@ class OpenSeekDashboard {
                 
             } else {
                 this.scanProgressBox.style.display = 'none';
+                if (this.dropZone) this.dropZone.style.display = 'flex';
                 this.showToast(data.detail || "Scanning failed", true);
             }
         } catch (err) {
             clearInterval(progressInterval);
             this.scanProgressBox.style.display = 'none';
+            if (this.dropZone) this.dropZone.style.display = 'flex';
             this.showToast("Failed to connect to the forensic backend.", true);
         }
     }

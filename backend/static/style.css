@@ -2168,3 +2168,59 @@ table.history-table tr:hover td {
     left: 150%;
 }
 
+/* Interactive Scan Another Button */
+.btn-scan-another {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-scan-another svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-scan-another:hover svg {
+    transform: rotate(-180deg);
+}
+
+/* History Log Filtering Pills */
+.filter-bar {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 3px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+.btn-filter {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    outline: none;
+}
+.btn-filter:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+}
+.btn-filter.active {
+    background: var(--accent-primary);
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(138, 70, 255, 0.3);
+}
+
+/* Light theme overrides for filter bar */
+html.light-theme .filter-bar {
+    background: rgba(0, 0, 0, 0.02);
+}
+html.light-theme .btn-filter:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+

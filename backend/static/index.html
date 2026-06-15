@@ -233,51 +233,60 @@
 
         <!-- 2. Dashboard Panel View -->
         <section id="dashboard-section" class="dashboard-grid hidden">
-            
-            <!-- Left Side: User Profile & Credits -->
-            <div class="profile-card glass-panel">
-                <h3 class="card-title">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.25z"/>
-                    </svg>
-                    Credit Balance
-                </h3>
-
-                <div class="credits-circle-container">
-                    <div class="credits-ring-wrapper">
-                        <svg class="progress-ring" width="160" height="160">
-                            <!-- Background Track -->
-                            <circle class="progress-ring-track" stroke="rgba(255, 255, 255, 0.05)" stroke-width="8" fill="transparent" r="70" cx="80" cy="80" />
-                            <!-- Animated Foreground -->
-                            <circle class="progress-ring-circle" id="credits-svg-bar" stroke="url(#purple-cyan-gradient)" stroke-width="8" stroke-linecap="round" fill="transparent" r="70" cx="80" cy="80" stroke-dasharray="440" stroke-dashoffset="440" />
-                            <defs>
-                                <linearGradient id="purple-cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="var(--accent-primary)" />
-                                    <stop offset="100%" stop-color="var(--accent-secondary)" />
-                                </linearGradient>
-                            </defs>
+            <div class="dashboard-left-col" style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="profile-card glass-panel" style="padding: 25px; display: flex; flex-direction: column; gap: 20px;">
+                    <h3 class="card-title">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.25z"/>
                         </svg>
-                        <div class="credits-ring-content">
-                            <span id="dashboard-credits" class="credits-value">0</span>
-                            <span class="credits-max">Remaining</span>
+                        Credit Balance
+                    </h3>
+
+                    <div class="credits-circle-container">
+                        <div class="credits-ring-wrapper">
+                            <svg class="progress-ring" width="160" height="160">
+                                <!-- Background Track -->
+                                <circle class="progress-ring-track" stroke="rgba(255, 255, 255, 0.05)" stroke-width="8" fill="transparent" r="70" cx="80" cy="80" />
+                                <!-- Animated Foreground -->
+                                <circle class="progress-ring-circle" id="credits-svg-bar" stroke="url(#purple-cyan-gradient)" stroke-width="8" stroke-linecap="round" fill="transparent" r="70" cx="80" cy="80" stroke-dasharray="440" stroke-dashoffset="440" />
+                                <defs>
+                                    <linearGradient id="purple-cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="var(--accent-primary)" />
+                                        <stop offset="100%" stop-color="var(--accent-secondary)" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="credits-ring-content">
+                                <span id="dashboard-credits" class="credits-value">0</span>
+                                <span class="credits-max">Remaining</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="credits-info">
-                    Each diagnostic image scan consumes <strong>1 credit</strong>.
-                </div>
-
-                <!-- Chrome Extension Download Section -->
-                <div class="extension-download-card">
-                    <div class="extension-info-text">
-                        Analyze web images directly with our browser tool.
+                    <div class="credits-info" style="font-size: 13px; color: var(--text-secondary); text-align: center; margin-top: 10px; line-height: 1.5;">
+                        Each diagnostic image scan consumes <strong>1 credit</strong>.
                     </div>
-                    <a id="download-extension-btn" href="/download-extension" class="btn btn-primary download-btn">
-                        <svg viewBox="0 0 24 24">
+                </div>
+
+                <!-- Chrome Extension Download Card -->
+                <div class="extension-card glass-panel" style="padding: 25px; display: flex; flex-direction: column; gap: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <h3 class="card-title" style="margin: 0; font-size: 16px;">
+                            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: var(--accent-secondary); margin-right: 8px; vertical-align: middle;">
+                                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/>
+                            </svg>
+                            Browser Tool
+                        </h3>
+                        <span class="badge badge-uncertain" style="font-size: 10px; font-weight: 700; padding: 2px 6px;">v1.0.4</span>
+                    </div>
+                    <div class="extension-info-text" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; text-align: left;">
+                        Scan and authenticate web images directly on any website with one-click context menu integration.
+                    </div>
+                    <a id="download-extension-btn" href="/download-extension" class="btn btn-primary download-btn" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: currentColor;">
                             <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
                         </svg>
-                        Download Extension (ZIP)
+                        Download ZIP
                     </a>
                 </div>
             </div>
@@ -390,19 +399,34 @@
                                     <div class="metric-progress-fill fill-cyan" id="metric-anomaly-fill" style="width: 0%"></div>
                                 </div>
                             </div>
+
+                            <!-- Scan Another Button -->
+                            <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                                <button class="btn btn-secondary btn-scan-another" id="btn-scan-another" onclick="app.resetScanner()">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                    </svg>
+                                    Scan Another Specimen
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- History Log Table -->
                 <div id="history-section" class="glass-panel history-section hidden">
-                    <div class="history-header">
-                        <h3 class="card-title">
+                    <div class="history-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <h3 class="card-title" style="margin: 0;">
                             <svg viewBox="0 0 24 24">
                                 <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
                             </svg>
                             Forensic Scan Log
                         </h3>
+                        <div class="filter-bar" style="display: flex; gap: 8px;">
+                            <button class="btn-filter active" onclick="app.setHistoryFilter('all')">All</button>
+                            <button class="btn-filter" onclick="app.setHistoryFilter('ai')">AI Gen</button>
+                            <button class="btn-filter" onclick="app.setHistoryFilter('authentic')">Authentic</button>
+                        </div>
                     </div>
                     
                     <div class="table-wrapper">
