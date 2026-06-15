@@ -34,6 +34,7 @@ class OpenSeekDashboard {
         this.resultContentType = document.getElementById("result-content-type");
         this.resultFaceVerify = document.getElementById("result-face-verify");
         this.resultAnomalyScore = document.getElementById("result-anomaly-score");
+        this.resultPipeline = document.getElementById("result-pipeline");
         this.resultBadgeContainer = document.getElementById("result-badge-container");
         this.resultRadialGauge = document.getElementById("result-radial-gauge");
         
@@ -378,15 +379,147 @@ class OpenSeekDashboard {
     }
 
     // Login Form Handler
+    // Toggle Password Visibility
+    togglePasswordVisibility(id, btn) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        const isPwd = input.type === 'password';
+        input.type = isPwd ? 'text' : 'password';
+        if (isPwd) {
+            btn.classList.add('visible');
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+        } else {
+            btn.classList.remove('visible');
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+        }
+    }
+
+    // Forgot Password Mock
+    handleForgotPassword(e) {
+        e.preventDefault();
+        const email = document.getElementById("login-email").value;
+        if (!email) {
+            this.showToast("Please enter your email address first.", true);
+            const error = document.getElementById("login-email-error");
+            if (error) {
+                error.innerText = "Email is required to reset password";
+                error.classList.remove("hidden");
+                document.getElementById("login-email").classList.add("input-error");
+            }
+            return;
+        }
+        this.showToast(`Password reset link sent to ${email} (Mock)`);
+    }
+
+    // Inline Email/Password Validations
+    validateEmailFormat(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    validateLoginEmail() {
+        const input = document.getElementById("login-email");
+        const error = document.getElementById("login-email-error");
+        if (!input || !error) return false;
+
+        if (!input.value.trim()) {
+            error.innerText = "Email address is required";
+            error.classList.remove("hidden");
+            input.classList.add("input-error");
+            return false;
+        } else if (!this.validateEmailFormat(input.value)) {
+            error.innerText = "Please enter a valid email address";
+            error.classList.remove("hidden");
+            input.classList.add("input-error");
+            return false;
+        } else {
+            error.classList.add("hidden");
+            input.classList.remove("input-error");
+            return true;
+        }
+    }
+
+    validateLoginPassword() {
+        const input = document.getElementById("login-password");
+        const error = document.getElementById("login-password-error");
+        if (!input || !error) return false;
+
+        if (!input.value) {
+            error.innerText = "Password is required";
+            error.classList.remove("hidden");
+            input.parentElement.classList.add("input-error");
+            return false;
+        } else {
+            error.classList.add("hidden");
+            input.parentElement.classList.remove("input-error");
+            return true;
+        }
+    }
+
+    validateRegEmail() {
+        const input = document.getElementById("reg-email");
+        const error = document.getElementById("reg-email-error");
+        if (!input || !error) return false;
+
+        if (!input.value.trim()) {
+            error.innerText = "Email address is required";
+            error.classList.remove("hidden");
+            input.classList.add("input-error");
+            return false;
+        } else if (!this.validateEmailFormat(input.value)) {
+            error.innerText = "Please enter a valid email address";
+            error.classList.remove("hidden");
+            input.classList.add("input-error");
+            return false;
+        } else {
+            error.classList.add("hidden");
+            input.classList.remove("input-error");
+            return true;
+        }
+    }
+
+    validateRegPassword() {
+        const input = document.getElementById("reg-password");
+        const error = document.getElementById("reg-password-error");
+        if (!input || !error) return false;
+
+        if (!input.value) {
+            error.innerText = "Password is required";
+            error.classList.remove("hidden");
+            input.parentElement.classList.add("input-error");
+            return false;
+        } else if (input.value.length < 6) {
+            error.innerText = "Password must be at least 6 characters";
+            error.classList.remove("hidden");
+            input.parentElement.classList.add("input-error");
+            return false;
+        } else {
+            error.classList.add("hidden");
+            input.parentElement.classList.remove("input-error");
+            return true;
+        }
+    }
+
+    // Login Form Handler
     async handleLogin(e) {
         e.preventDefault();
+        
+        const isEmailValid = this.validateLoginEmail();
+        const isPasswordValid = this.validateLoginPassword();
+        if (!isEmailValid || !isPasswordValid) {
+            this.showToast("Please fix the validation errors.", true);
+            return;
+        }
+
         const email = document.getElementById("login-email").value;
         const password = document.getElementById("login-password").value;
 
-        // Show loading state on button immediately
-        const btn = e.target.querySelector('button[type="submit"]');
-        const originalText = btn ? btn.innerText : '';
-        if (btn) { btn.innerText = 'Signing in…'; btn.disabled = true; }
+        const btn = document.getElementById("login-submit-btn");
+        if (btn) {
+            btn.disabled = true;
+            btn.querySelector('.btn-text').classList.add('hidden');
+            btn.querySelector('.btn-spinner').classList.remove('hidden');
+        }
 
         try {
             const res = await fetch(`${API_BASE}/auth/login`, {
@@ -399,36 +532,50 @@ class OpenSeekDashboard {
             if (res.ok) {
                 this.token = data.token;
                 localStorage.setItem("openseek_token", this.token);
-                // Build user from login response — no extra /auth/me round trip needed
                 this.user = { email: data.user.email, credits: data.user.credits, id: data.user.id };
 
-                // Sync token to Chrome extension storage
                 if (window.chrome && chrome.storage && chrome.storage.local) {
                     chrome.storage.local.set({ openseek_token: this.token, openseek_backend_url: API_BASE });
                 }
 
-                // Show dashboard instantly — no waiting
                 this.showDashboard();
                 this.refreshCreditsUI(this.user.credits);
                 this.showToast("Welcome back to OpenSeek!");
-
-                // Load history in background (non-blocking)
                 this.loadHistory();
             } else {
-                if (btn) { btn.innerText = originalText; btn.disabled = false; }
                 this.showToast(data.detail || "Authentication failed", true);
             }
         } catch (err) {
-            if (btn) { btn.innerText = originalText; btn.disabled = false; }
             this.showToast("Failed to connect to the authentication server.", true);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.querySelector('.btn-text').classList.remove('hidden');
+                btn.querySelector('.btn-spinner').classList.add('hidden');
+            }
         }
     }
 
     // Register Form Handler
     async handleRegister(e) {
         e.preventDefault();
+        
+        const isEmailValid = this.validateRegEmail();
+        const isPasswordValid = this.validateRegPassword();
+        if (!isEmailValid || !isPasswordValid) {
+            this.showToast("Please fix the validation errors.", true);
+            return;
+        }
+
         const email = document.getElementById("reg-email").value;
         const password = document.getElementById("reg-password").value;
+
+        const btn = document.getElementById("reg-submit-btn");
+        if (btn) {
+            btn.disabled = true;
+            btn.querySelector('.btn-text').classList.add('hidden');
+            btn.querySelector('.btn-spinner').classList.remove('hidden');
+        }
 
         try {
             const res = await fetch(`${API_BASE}/auth/register`, {
@@ -440,15 +587,23 @@ class OpenSeekDashboard {
             const data = await res.json();
             if (res.ok) {
                 this.showToast("Registration successful! You can now log in.");
-                // Auto transition to login tab & populate
                 this.switchAuthTab('login');
                 document.getElementById("login-email").value = email;
                 document.getElementById("login-password").value = password;
+                // Clear validation states
+                this.validateLoginEmail();
+                this.validateLoginPassword();
             } else {
                 this.showToast(data.detail || "Registration failed", true);
             }
         } catch (err) {
             this.showToast("Failed to connect to the authentication server.", true);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.querySelector('.btn-text').classList.remove('hidden');
+                btn.querySelector('.btn-spinner').classList.add('hidden');
+            }
         }
     }
 
@@ -594,6 +749,7 @@ class OpenSeekDashboard {
         
         document.getElementById("modal-face-detected").innerText = details.face_detected ? 'Yes (Face Analyzed)' : 'None Detected';
         document.getElementById("modal-confidence").innerText = details.confidence_score ? `${Math.round(details.confidence_score * 100)}%` : 'N/A';
+        document.getElementById("modal-pipeline").innerText = details.pipeline || 'Ensemble Model Pipeline';
         
         this.detailModal.classList.add('active');
     }
@@ -725,6 +881,10 @@ class OpenSeekDashboard {
         
         const noiseVal = data.embedding_anomaly_score ? `${(data.embedding_anomaly_score * 100).toFixed(2)}%` : '0.00%';
         this.resultAnomalyScore.innerText = noiseVal;
+        
+        if (this.resultPipeline) {
+            this.resultPipeline.innerText = data.pipeline || 'Ensemble Model Pipeline';
+        }
         
         this.resultBadgeContainer.innerHTML = `
             <span class="badge badge-${riskClass}">

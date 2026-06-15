@@ -356,7 +356,8 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
         "manipulated_regions_heatmap": heatmap_uri,
         "patch_manipulated_count": int(prob * 10) if is_ai else 0,
         "embedding_anomaly_score": round(prob * 0.1, 4),
-        "face_detected": False
+        "face_detected": False,
+        "pipeline": "Fallback Forensic Scanner (FFT + ELA)"
     }
 
 @app.post("/detect-image")

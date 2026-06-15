@@ -445,7 +445,8 @@ class AdvancedForensicEnsemble(nn.Module):
                 "manipulated_regions_heatmap": f"data:image/jpeg;base64,{ela_heatmap_b64}" if ela_heatmap_b64 else None,
                 "patch_manipulated_count": int(ela_score * 100),
                 "embedding_anomaly_score": round(meta_score, 4),
-                "face_detected": has_face
+                "face_detected": has_face,
+                "pipeline": "Ensemble ViT + Spectral FFT + ELA Analyzer" if self.hf_model else "Ensemble Spectral FFT + ELA Analyzer"
             }
 
         with torch.no_grad():
@@ -538,6 +539,12 @@ class AdvancedForensicEnsemble(nn.Module):
         if confidence_score < 0.4:
             risk_level = "Uncertain"
             
+        # Set pipeline name based on route
+        if not is_illustration:
+            pipeline_name = "Ensemble ViT + EfficientNet + PRNU Sensor" if self.hf_model else "Ensemble EfficientNet + PRNU Sensor"
+        else:
+            pipeline_name = "Ensemble ViT + Diffusion Classifier" if self.hf_model else "Ensemble Diffusion Classifier"
+
         return {
             "content_type": content_type,
             "ai_probability": round(ai_probability, 4),
@@ -546,5 +553,6 @@ class AdvancedForensicEnsemble(nn.Module):
             "risk_level": risk_level,
             "manipulated_regions_heatmap": f"data:image/jpeg;base64,{heatmap_base64}" if heatmap_base64 else None,
             "patch_manipulated_count": manipulated_count,
-            "embedding_anomaly_score": round(embedding_dist_score, 4)
+            "embedding_anomaly_score": round(embedding_dist_score, 4),
+            "pipeline": pipeline_name
         }
