@@ -20,6 +20,9 @@
             <span>OpenSeek</span>
         </div>
         <div class="nav-actions">
+            <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="app.toggleTheme()" title="Toggle Theme" style="margin-right: 10px;">
+                <svg id="theme-icon" viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: currentColor;"></svg>
+            </button>
             <div id="header-user-info" class="user-badge hidden">
                 <span class="user-email" id="header-email">user@openseek.ai</span>
                 <span class="credits-pill">
@@ -241,9 +244,23 @@
                 </h3>
 
                 <div class="credits-circle-container">
-                    <div id="credits-radial-progress" class="credits-progress">
-                        <span id="dashboard-credits" class="credits-value">0</span>
-                        <span class="credits-max">Remaining</span>
+                    <div class="credits-ring-wrapper">
+                        <svg class="progress-ring" width="160" height="160">
+                            <!-- Background Track -->
+                            <circle class="progress-ring-track" stroke="rgba(255, 255, 255, 0.05)" stroke-width="8" fill="transparent" r="70" cx="80" cy="80" />
+                            <!-- Animated Foreground -->
+                            <circle class="progress-ring-circle" id="credits-svg-bar" stroke="url(#purple-cyan-gradient)" stroke-width="8" stroke-linecap="round" fill="transparent" r="70" cx="80" cy="80" stroke-dasharray="440" stroke-dashoffset="440" />
+                            <defs>
+                                <linearGradient id="purple-cyan-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="var(--accent-primary)" />
+                                    <stop offset="100%" stop-color="var(--accent-secondary)" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="credits-ring-content">
+                            <span id="dashboard-credits" class="credits-value">0</span>
+                            <span class="credits-max">Remaining</span>
+                        </div>
                     </div>
                 </div>
 
@@ -290,22 +307,34 @@
                     </div>
 
                     <!-- Progress Indicator -->
-                    <div class="scan-progress-container" id="scan-progress-box">
-                        <div class="progress-header">
-                            <span id="scan-status-text">Uploading image...</span>
-                            <span id="scan-progress-percent">0%</span>
+                    <div class="scan-progress-container" id="scan-progress-box" style="display: none; flex-direction: column; align-items: center;">
+                        <div class="scan-preview-wrapper">
+                            <img id="scan-image-preview" src="" class="scan-preview-img hidden">
+                            <div class="scan-laser-line-active"></div>
                         </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" id="scan-progress-fill"></div>
+                        <div class="progress-info-wrap" style="width: 100%;">
+                            <div class="progress-header">
+                                <span id="scan-status-text">Uploading image...</span>
+                                <span id="scan-progress-percent">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" id="scan-progress-fill"></div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Scan Results Display -->
-                    <div class="scan-result-panel" id="scan-result-box">
+                    <div class="scan-result-panel" id="scan-result-box" style="display: none;">
                         <div class="result-gauge-box">
-                            <div class="gauge-circle" id="result-radial-gauge">
-                                <span class="gauge-score" id="result-score">0%</span>
-                                <span class="gauge-label">Authenticity</span>
+                            <div class="gauge-container">
+                                <svg class="gauge-ring" width="120" height="120">
+                                    <circle class="gauge-ring-track" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="transparent" r="50" cx="60" cy="60" />
+                                    <circle class="gauge-ring-circle" id="result-svg-bar" stroke="var(--color-low)" stroke-width="6" stroke-linecap="round" fill="transparent" r="50" cx="60" cy="60" stroke-dasharray="314" stroke-dashoffset="314" />
+                                </svg>
+                                <div class="gauge-content">
+                                    <span class="gauge-score" id="result-score">0%</span>
+                                    <span class="gauge-label">Authenticity</span>
+                                </div>
                             </div>
                             <div id="result-badge-container" class="result-badge-wrap"></div>
                         </div>
@@ -329,6 +358,37 @@
                             <div class="result-row">
                                 <span class="result-row-label">Analysis Pipeline:</span>
                                 <span class="result-row-value" id="result-pipeline">-</span>
+                            </div>
+                            
+                            <!-- Detailed Anomaly Bars -->
+                            <div class="metric-progress-group" style="margin-top: 15px;">
+                                <div class="metric-progress-header">
+                                    <span>AI Probability</span>
+                                    <span id="metric-ai-prob-val">0%</span>
+                                </div>
+                                <div class="metric-progress-bg">
+                                    <div class="metric-progress-fill fill-red" id="metric-ai-prob-fill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-progress-group">
+                                <div class="metric-progress-header">
+                                    <span>Ensemble Confidence</span>
+                                    <span id="metric-confidence-val">0%</span>
+                                </div>
+                                <div class="metric-progress-bg">
+                                    <div class="metric-progress-fill fill-purple" id="metric-confidence-fill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-progress-group">
+                                <div class="metric-progress-header">
+                                    <span>Anomaly Index</span>
+                                    <span id="metric-anomaly-val">0%</span>
+                                </div>
+                                <div class="metric-progress-bg">
+                                    <div class="metric-progress-fill fill-cyan" id="metric-anomaly-fill" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

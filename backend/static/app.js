@@ -75,9 +75,10 @@ class OpenSeekDashboard {
     init() {
         this.setupDragAndDrop();
         
-        // Theme initialization (forced to light theme only)
-        this.theme = "light";
+        // Theme initialization
+        this.theme = localStorage.getItem("openseek_theme") || "dark";
         document.documentElement.setAttribute("data-theme", this.theme);
+        this.updateThemeIcon();
         
         this.initFirebase();
         
@@ -217,11 +218,24 @@ class OpenSeekDashboard {
     }
 
     toggleTheme() {
-        // Force light mode only
+        this.theme = this.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute("data-theme", this.theme);
+        localStorage.setItem("openseek_theme", this.theme);
+        this.updateThemeIcon();
     }
 
     updateThemeIcon() {
-        // Force light mode only
+        const themeIcon = document.getElementById("theme-icon");
+        if (!themeIcon) return;
+        if (this.theme === "dark") {
+            themeIcon.innerHTML = `
+                <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.02-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.38-.38.38-1.02 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41z"/>
+            `;
+        } else {
+            themeIcon.innerHTML = `
+                <path d="M12.3 22h-.1c-5.4 0-10-4.6-10-10 0-4.3 2.9-8.1 7-9.3.5-.1 1 .2 1.1.7.1.5-.2 1-.7 1.1-3.1.9-5.3 3.8-5.3 7.5 0 4.4 3.6 8 8 8 3.7 0 6.6-2.2 7.5-5.3.1-.5.7-.8 1.1-.7.5.1.8.7.7 1.1-1.2 4.1-5 7-9.3 7z"/>
+            `;
+        }
     }
 
     // Drag and Drop implementation
@@ -605,19 +619,20 @@ class OpenSeekDashboard {
         
         // Update display text
         this.headerCredits.innerText = credits;
-        this.dashboardCredits.innerText = credits;
+        if (this.dashboardCredits) {
+            this.dashboardCredits.innerText = credits;
+        }
         
-        // Update circular conic gradient
-        // Assuming maximum starts around 10 for visual ratio (10 daily credits limit)
+        // Update circular SVG progress
         const maxLimit = 10;
         const percentage = Math.min(100, Math.max(0, (credits / maxLimit) * 100));
         
-        const progressCircle = document.getElementById("credits-radial-progress");
-        if (progressCircle) {
-            progressCircle.style.background = `
-                radial-gradient(closest-side, var(--bg-primary) 79%, transparent 80% 100%),
-                conic-gradient(var(--accent-primary) ${percentage}%, rgba(255, 255, 255, 0.05) ${percentage}% 100%)
-            `;
+        const svgBar = document.getElementById("credits-svg-bar");
+        if (svgBar) {
+            const circumference = 2 * Math.PI * 70; // ~439.82
+            svgBar.style.strokeDasharray = `${circumference}`;
+            const offset = circumference - (percentage / 100) * circumference;
+            svgBar.style.strokeDashoffset = `${offset}`;
         }
     }
 
@@ -658,14 +673,18 @@ class OpenSeekDashboard {
             // Score and class styling
             const authScorePercent = Math.round((1 - scan.ai_probability) * 100);
             const riskClass = this.getRiskClass(scan.risk_level);
+            const dotClass = scan.is_ai_generated ? 'pulse-dot-red' : 'pulse-dot-green';
             
             tr.innerHTML = `
                 <td><strong>${this.escapeHtml(scan.filename)}</strong></td>
                 <td style="font-size: 13px; color: var(--text-muted);">${dateStr}</td>
                 <td>
-                    <span style="font-weight: 600; color: ${scan.is_ai_generated ? 'var(--color-high)' : 'var(--color-low)'}">
-                        ${scan.is_ai_generated ? 'AI Generated' : 'Authentic'}
-                    </span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="pulse-dot ${dotClass}"></span>
+                        <span style="font-weight: 600; color: ${scan.is_ai_generated ? 'var(--color-high)' : 'var(--color-low)'}">
+                            ${scan.is_ai_generated ? 'AI Generated' : 'Authentic'}
+                        </span>
+                    </div>
                 </td>
                 <td style="font-weight: 500;">${authScorePercent}%</td>
                 <td>
@@ -779,6 +798,18 @@ class OpenSeekDashboard {
         this.scanResultBox.style.display = 'none';
         this.scanProgressBox.style.display = 'flex';
         
+        // Render Image Preview
+        const previewImg = document.getElementById("scan-image-preview");
+        if (previewImg) {
+            previewImg.classList.add("hidden");
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewImg.classList.remove("hidden");
+            };
+            reader.readAsDataURL(file);
+        }
+        
         // Start Progress Simulation
         let progress = 0;
         this.scanProgressFill.style.width = '0%';
@@ -851,17 +882,21 @@ class OpenSeekDashboard {
         const authScorePercent = Math.round((1 - data.ai_probability) * 100);
         this.resultScore.innerText = `${authScorePercent}%`;
         
-        // Gauge circle gradient
+        // Gauge circle gradient & color
         const riskClass = this.getRiskClass(data.risk_level);
         let color = 'var(--color-low)';
         if (riskClass === 'medium') color = 'var(--color-medium)';
         if (riskClass === 'high') color = 'var(--color-high)';
         if (riskClass === 'uncertain') color = 'var(--color-uncertain)';
         
-        this.resultRadialGauge.style.background = `
-            radial-gradient(closest-side, var(--bg-primary) 79%, transparent 80% 100%),
-            conic-gradient(${color} ${authScorePercent}%, rgba(255, 255, 255, 0.05) ${authScorePercent}% 100%)
-        `;
+        const resultSvgBar = document.getElementById("result-svg-bar");
+        if (resultSvgBar) {
+            const circumference = 2 * Math.PI * 50; // ~314.16
+            resultSvgBar.style.strokeDasharray = `${circumference}`;
+            const offset = circumference - (authScorePercent / 100) * circumference;
+            resultSvgBar.style.strokeDashoffset = `${offset}`;
+            resultSvgBar.setAttribute("stroke", color);
+        }
         
         this.resultClass.innerText = data.is_ai_generated ? 'AI Generated' : 'Authentic';
         this.resultClass.style.color = data.is_ai_generated ? 'var(--color-high)' : 'var(--color-low)';
@@ -881,6 +916,32 @@ class OpenSeekDashboard {
                 ${data.risk_level}
             </span>
         `;
+        
+        // Update horizontal anomaly metrics bars
+        const aiProbVal = Math.round(data.ai_probability * 100);
+        const confidenceVal = Math.round((data.confidence_score || 0.85) * 100);
+        const anomalyVal = Math.round((data.embedding_anomaly_score || 0.05) * 100);
+        
+        const aiProbFill = document.getElementById("metric-ai-prob-fill");
+        const aiProbText = document.getElementById("metric-ai-prob-val");
+        if (aiProbFill && aiProbText) {
+            aiProbFill.style.width = `${aiProbVal}%`;
+            aiProbText.innerText = `${aiProbVal}%`;
+        }
+        
+        const confidenceFill = document.getElementById("metric-confidence-fill");
+        const confidenceText = document.getElementById("metric-confidence-val");
+        if (confidenceFill && confidenceText) {
+            confidenceFill.style.width = `${confidenceVal}%`;
+            confidenceText.innerText = `${confidenceVal}%`;
+        }
+        
+        const anomalyFill = document.getElementById("metric-anomaly-fill");
+        const anomalyText = document.getElementById("metric-anomaly-val");
+        if (anomalyFill && anomalyText) {
+            anomalyFill.style.width = `${anomalyVal}%`;
+            anomalyText.innerText = `${anomalyVal}%`;
+        }
     }
 }
 

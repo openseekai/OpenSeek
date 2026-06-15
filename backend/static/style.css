@@ -40,7 +40,7 @@
     --bg-primary: #f4f6fa;
     --bg-secondary: rgba(255, 255, 255, 0.75);
     --bg-card: rgba(255, 255, 255, 0.85);
-    --bg-header: rgba(244, 246, 2a, 0.7);
+    --bg-header: rgba(244, 246, 250, 0.7);
     --bg-input: rgba(0, 0, 0, 0.02);
     --bg-btn-secondary: rgba(0, 0, 0, 0.03);
     --border-color: rgba(0, 0, 0, 0.06);
@@ -1846,5 +1846,325 @@ table.history-table tr:hover td {
     49%, 83% { opacity: 0; transform: translateY(15px) scale(0.95); pointer-events: none; }
     85%, 97% { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
     99%, 100% { opacity: 0; transform: translateY(-10px) scale(0.95); pointer-events: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Premium OpenSeek Dashboard Visual Overhaul Upgrades
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Theme Toggle Button Style */
+.theme-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-primary);
+    transform: rotate(15deg) scale(1.05);
+    box-shadow: 0 0 15px rgba(138, 70, 255, 0.25);
+}
+
+/* SVG Credits progress ring container */
+.credits-circle-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px 0;
+}
+
+.credits-ring-wrapper {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+}
+
+.progress-ring-circle {
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 0 4px var(--accent-primary));
+}
+
+.credits-ring-content {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.credits-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    background: linear-gradient(135deg, var(--text-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.credits-max {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+}
+
+/* SVG Gauge Ring for scan results */
+.gauge-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.gauge-ring {
+    transform: rotate(-90deg);
+}
+
+.gauge-ring-circle {
+    transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gauge-content {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.gauge-score {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.gauge-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Direct Forensic Scanner Preview & Laser Line */
+.scan-preview-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    height: 180px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .scan-preview-wrapper {
+    background: rgba(0, 0, 0, 0.03);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.scan-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.5s ease;
+}
+
+.scan-laser-line-active {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent-secondary), transparent);
+    box-shadow: 0 0 12px var(--accent-secondary), 0 0 4px var(--accent-secondary);
+    animation: scanningSweep 2.2s infinite ease-in-out;
+    z-index: 5;
+}
+
+@keyframes scanningSweep {
+    0% { top: 0%; opacity: 0.8; }
+    50% { top: 100%; opacity: 1; }
+    100% { top: 0%; opacity: 0.8; }
+}
+
+/* Pulsing Status Dot */
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+}
+
+.pulse-dot-green {
+    background-color: var(--color-low);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+    animation: pulseGreen 2s infinite;
+}
+
+.pulse-dot-red {
+    background-color: var(--color-high);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+    animation: pulseRed 2s infinite;
+}
+
+@keyframes pulseGreen {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* High Fidelity Details Anomaly bars */
+.metric-progress-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.metric-progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.metric-progress-bg {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+[data-theme="light"] .metric-progress-bg {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.metric-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.metric-progress-fill.fill-red {
+    background: linear-gradient(90deg, #ef4444, #f43f5e);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+}
+
+.metric-progress-fill.fill-purple {
+    background: linear-gradient(90deg, var(--accent-primary), #a855f7);
+    box-shadow: 0 0 8px rgba(138, 70, 255, 0.2);
+}
+
+.metric-progress-fill.fill-cyan {
+    background: linear-gradient(90deg, var(--accent-secondary), #06b6d4);
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+}
+
+/* Enhancements to tables and components */
+.history-section table {
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    width: 100%;
+}
+
+.history-section tr {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.history-section tbody tr {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+}
+
+[data-theme="light"] .history-section tbody tr {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.history-section tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="light"] .history-section tbody tr:hover {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.history-section td {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.history-section td:first-child {
+    border-left: 1px solid var(--border-color);
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.history-section td:last-child {
+    border-right: 1px solid var(--border-color);
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* Glass panel glow effects */
+.glass-panel {
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+    transform: skewX(-25deg);
+    transition: 0.75s;
+}
+
+.glass-panel:hover::before {
+    left: 150%;
 }
 
