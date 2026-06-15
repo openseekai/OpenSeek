@@ -1,18 +1,12 @@
 {
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/static/:path*",
       "destination": "/backend/static/:path*"
     },
     {
-      "source": "/",
-      "destination": "/backend/static/index.html"
-    },
-    {
-      "source": "/:path((?!backend|static).+)",
+      "source": "/((?!backend|static).*)",
       "destination": "/backend/static/index.html"
     }
   ]
 }
-
