@@ -783,14 +783,30 @@ async def firebase_login(req: FirebaseLoginRequest):
     email = req.email.strip().lower()
 
     # Verify the Firebase ID token if firebase-admin is available
-    if HAS_FIREBASE_ADMIN and req.id_token != "MOCK_FIREBASE_TOKEN":
+    if _using_firestore:
+        if req.id_token == "MOCK_FIREBASE_TOKEN":
+            raise HTTPException(status_code=401, detail="Mock Google Sign-In is disabled when live Firebase is active.")
+        
         try:
             decoded_token = firebase_auth.verify_id_token(req.id_token)
             verified_email = decoded_token.get("email")
             if verified_email:
                 email = verified_email.strip().lower()
+            else:
+                raise HTTPException(status_code=401, detail="Firebase token did not contain a valid email address")
         except Exception as e:
-            print(f"[OpenSeek Auth] Firebase token verification note: {e}")
+            print(f"[OpenSeek Auth] Firebase token verification failed: {e}")
+            raise HTTPException(status_code=401, detail=f"Firebase token verification failed: {str(e)}")
+    else:
+        # Sandbox / SQLite mode: allow MOCK_FIREBASE_TOKEN or real token if verification works
+        if req.id_token != "MOCK_FIREBASE_TOKEN" and HAS_FIREBASE_ADMIN:
+            try:
+                decoded_token = firebase_auth.verify_id_token(req.id_token)
+                verified_email = decoded_token.get("email")
+                if verified_email:
+                    email = verified_email.strip().lower()
+            except Exception as e:
+                print(f"[OpenSeek Auth] Firebase token verification note (sandbox mode): {e}")
 
     if not email:
         raise HTTPException(status_code=400, detail="No email provided or token verification failed")

@@ -130,7 +130,7 @@ docsBtn.addEventListener("click", async () => {
 
 dashboardBtn.addEventListener("click", async () => {
     const { openseek_backend_url = "https://openseek-production.up.railway.app" } = await chrome.storage.local.get("openseek_backend_url");
-    let targetUrl = "https://openseek-six.vercel.app";
+    let targetUrl = "https://open-seek-ai.vercel.app";
     if (openseek_backend_url.includes("localhost") || openseek_backend_url.includes("127.0.0.1")) {
         targetUrl = `${openseek_backend_url}/static/index.html`;
     } else if (openseek_backend_url.includes("railway.app")) {
