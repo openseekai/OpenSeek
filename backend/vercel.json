@@ -6,7 +6,11 @@
       "destination": "/static/:path*"
     },
     {
-      "source": "/:path((?!static).*)",
+      "source": "/",
+      "destination": "/static/index.html"
+    },
+    {
+      "source": "/:path((?!static).+)",
       "destination": "/static/index.html"
     }
   ]
