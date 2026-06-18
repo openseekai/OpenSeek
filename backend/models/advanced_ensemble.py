@@ -147,6 +147,7 @@ class AdvancedForensicEnsemble(nn.Module):
         
         # 5. Hugging Face Expert Classifier (accurate pre-trained deepfake model)
         self.hf_model = None
+        self.hf_face_model = None
         import os
         if os.environ.get("LOW_MEMORY") == "1":
             print("[OpenSeek] ℹ️ Running in LOW_MEMORY mode: skipped HuggingFace Deepfake ViT model")
@@ -160,6 +161,13 @@ class AdvancedForensicEnsemble(nn.Module):
                     device=-1 if self.device == 'cpu' else 0
                 )
                 print("[OpenSeek] ✅ Loaded pre-trained HuggingFace Deepfake ViT model")
+                self.hf_face_model = pipeline(
+                    "image-classification",
+                    model="dima806/deepfake_vs_real_image_detection",
+                    top_k=None,
+                    device=-1 if self.device == 'cpu' else 0
+                )
+                print("[OpenSeek] ✅ Loaded pre-trained HuggingFace Facial Deepfake model")
             except Exception as e:
                 print(f"[OpenSeek] Warning: Failed to load HuggingFace Expert model: {e}")
         
@@ -340,11 +348,77 @@ class AdvancedForensicEnsemble(nn.Module):
 
         # Check if face exists in image
         has_face = False
+        facial_ai_probability = None
         try:
             gray = cv2.cvtColor(original_img_cv, cv2.COLOR_BGR2GRAY)
             face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             has_face = len(faces) > 0
+            
+            if has_face and self.hf_face_model:
+                # Crop the largest face
+                x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
+                margin = int(0.2 * w)
+                x1, y1 = max(0, x - margin), max(0, y - margin)
+                x2, y2 = min(original_img_cv.shape[1], x + w + margin), min(original_img_cv.shape[0], y + h + margin)
+                face_crop = img.crop((x1, y1, x2, y2))
+                face_crop_cv = original_img_cv[y1:y2, x1:x2]
+                if face_crop_cv.size == 0:
+                    face_crop_cv = original_img_cv
+                
+                # 1. Neural Analysis
+                with torch.no_grad():
+                    out_face = self.hf_face_model(face_crop)
+                face_fake_res = next((r for r in out_face if any(l in r['label'].lower() for l in ["fake", "deepfake", "synthetic"])), None)
+                neural_face_prob = float(face_fake_res['score']) if face_fake_res else 0.5
+                
+                # 2. Microscopic Forensic Analysis (Invisible to naked eye)
+                invisible_anomaly_score = 0.0
+                try:
+                    # A. Frequency domain artifacts (Generative grid structures)
+                    gray_face = cv2.cvtColor(face_crop_cv, cv2.COLOR_BGR2GRAY)
+                    f = np.fft.fft2(gray_face)
+                    fshift = np.fft.fftshift(f)
+                    magnitude = np.abs(fshift)
+                    hf_mask = magnitude > np.mean(magnitude) * 3
+                    hf_score = np.sum(hf_mask) / (gray_face.size + 1e-9)
+                    fft_anomaly = min(1.0, hf_score * 50)
+                    
+                    # B. Error Level Analysis (Splicing / Face Swap compression discrepancies)
+                    import tempfile, os
+                    from PIL import ImageChops
+                    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                        tmp_name = tmp.name
+                    try:
+                        face_crop.save(tmp_name, 'JPEG', quality=90)
+                        resaved = Image.open(tmp_name)
+                        diff = ImageChops.difference(face_crop, resaved)
+                        diff_arr = np.array(diff.convert('L'))
+                        ela_std = np.std(diff_arr)
+                        ela_anomaly = min(1.0, max(0.0, ela_std / 32.0))
+                    finally:
+                        if os.path.exists(tmp_name): os.remove(tmp_name)
+                    
+                    # C. Color/Illumination Asymmetry (Light directions mismatched in Deepfakes)
+                    lab = cv2.cvtColor(face_crop_cv, cv2.COLOR_BGR2LAB)
+                    l, a, b = cv2.split(lab)
+                    illum_variance = np.var(l)
+                    illum_anomaly = min(1.0, max(0.0, (1000 - illum_variance) / 1000.0)) if illum_variance < 1000 else 0.0
+                    
+                    invisible_anomaly_score = (0.4 * fft_anomaly) + (0.4 * ela_anomaly) + (0.2 * illum_anomaly)
+                except Exception as e:
+                    print(f"[OpenSeek] Face invisible forensics error: {e}")
+                
+                # Blend Neural prediction with Invisible Microscopic Forensics
+                facial_ai_probability = (0.60 * neural_face_prob) + (0.40 * invisible_anomaly_score)
+                # Ensure it doesn't drop to exactly 0 or 1
+                facial_ai_probability = min(0.99, max(0.01, facial_ai_probability))
+                
+                # Force final probability to incorporate strong facial AI detection
+                if facial_ai_probability > 0.65 and hf_probability is not None:
+                    # If the face is highly likely to be AI, boost the overall score
+                    hf_probability = max(hf_probability, facial_ai_probability)
+                
         except Exception as e:
             print(f"[OpenSeek] Face detection exception: {e}")
 
@@ -516,6 +590,8 @@ class AdvancedForensicEnsemble(nn.Module):
                 "patch_manipulated_count": int(ela_score * 100),
                 "embedding_anomaly_score": round(meta_score, 4),
                 "face_detected": has_face,
+                "facial_ai_probability": round(facial_ai_probability, 4) if facial_ai_probability is not None else None,
+                "invisible_face_anomaly": round(invisible_anomaly_score, 4) if has_face and 'invisible_anomaly_score' in locals() else None,
                 "pipeline": "Ensemble ViT + Spectral FFT + ELA Analyzer" if self.hf_model else "Ensemble Spectral FFT + ELA Analyzer",
                 "flowchart_analysis": flowchart_analysis
             }
@@ -640,6 +716,9 @@ class AdvancedForensicEnsemble(nn.Module):
             "manipulated_regions_heatmap": f"data:image/jpeg;base64,{heatmap_base64}" if heatmap_base64 else None,
             "patch_manipulated_count": manipulated_count,
             "embedding_anomaly_score": round(embedding_dist_score, 4),
+            "face_detected": has_face,
+            "facial_ai_probability": round(facial_ai_probability, 4) if facial_ai_probability is not None else None,
+            "invisible_face_anomaly": round(invisible_anomaly_score, 4) if has_face and 'invisible_anomaly_score' in locals() else None,
             "pipeline": pipeline_name,
             "flowchart_analysis": flowchart_analysis
         }

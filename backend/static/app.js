@@ -846,6 +846,29 @@ class OpenSeekDashboard {
         document.getElementById("modal-lighting-factor").innerText = noiseVal;
         
         document.getElementById("modal-face-detected").innerText = details.face_detected ? 'Yes (Face Analyzed)' : 'None Detected';
+        
+        const modalRowFacialAI = document.getElementById("modal-row-facial-ai-prob");
+        const modalValFacialAI = document.getElementById("modal-facial-ai-prob");
+        if (details.facial_ai_probability !== undefined && details.facial_ai_probability !== null) {
+            const authScore = Math.round((1 - details.facial_ai_probability) * 100);
+            modalValFacialAI.innerText = `${authScore}% Real`;
+            modalValFacialAI.style.color = details.facial_ai_probability > 0.5 ? 'var(--color-high)' : 'var(--color-low)';
+            if (modalRowFacialAI) modalRowFacialAI.style.display = 'flex';
+        } else {
+            if (modalRowFacialAI) modalRowFacialAI.style.display = 'none';
+        }
+
+        const modalRowInvisibleFacial = document.getElementById("modal-row-invisible-facial-prob");
+        const modalValInvisibleFacial = document.getElementById("modal-invisible-facial-prob");
+        if (details.invisible_face_anomaly !== undefined && details.invisible_face_anomaly !== null) {
+            const anomalyScore = Math.round(details.invisible_face_anomaly * 100);
+            modalValInvisibleFacial.innerText = `${anomalyScore}% Anomaly Detected`;
+            modalValInvisibleFacial.style.color = details.invisible_face_anomaly > 0.3 ? 'var(--color-high)' : 'var(--color-low)';
+            if (modalRowInvisibleFacial) modalRowInvisibleFacial.style.display = 'flex';
+        } else {
+            if (modalRowInvisibleFacial) modalRowInvisibleFacial.style.display = 'none';
+        }
+        
         document.getElementById("modal-confidence").innerText = details.confidence_score ? `${Math.round(details.confidence_score * 100)}%` : 'N/A';
         document.getElementById("modal-pipeline").innerText = details.pipeline || 'Ensemble Model Pipeline';
         
@@ -1024,6 +1047,28 @@ class OpenSeekDashboard {
         
         this.resultContentType.innerText = data.content_type || 'Photograph';
         this.resultFaceVerify.innerText = data.face_detected ? 'Faces Detected' : 'None Detected';
+        
+        const rowFacialAI = document.getElementById("row-facial-ai-prob");
+        const valFacialAI = document.getElementById("result-facial-ai-probability");
+        if (data.facial_ai_probability !== undefined && data.facial_ai_probability !== null) {
+            const authScore = Math.round((1 - data.facial_ai_probability) * 100);
+            valFacialAI.innerText = `${authScore}% Real`;
+            valFacialAI.style.color = data.facial_ai_probability > 0.5 ? 'var(--color-high)' : 'var(--color-low)';
+            if (rowFacialAI) rowFacialAI.style.display = 'flex';
+        } else {
+            if (rowFacialAI) rowFacialAI.style.display = 'none';
+        }
+
+        const rowInvisibleFacial = document.getElementById("row-invisible-facial-prob");
+        const valInvisibleFacial = document.getElementById("result-invisible-facial-prob");
+        if (data.invisible_face_anomaly !== undefined && data.invisible_face_anomaly !== null) {
+            const anomalyScore = Math.round(data.invisible_face_anomaly * 100);
+            valInvisibleFacial.innerText = `${anomalyScore}% Anomaly`;
+            valInvisibleFacial.style.color = data.invisible_face_anomaly > 0.3 ? 'var(--color-high)' : 'var(--color-low)';
+            if (rowInvisibleFacial) rowInvisibleFacial.style.display = 'flex';
+        } else {
+            if (rowInvisibleFacial) rowInvisibleFacial.style.display = 'none';
+        }
         
         const noiseVal = data.embedding_anomaly_score ? `${(data.embedding_anomaly_score * 100).toFixed(2)}%` : '0.00%';
         this.resultAnomalyScore.innerText = noiseVal;

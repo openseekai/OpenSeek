@@ -381,6 +381,8 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
         "patch_manipulated_count": int(prob * 10) if is_ai else 0,
         "embedding_anomaly_score": round(prob * 0.1, 4),
         "face_detected": False,
+        "facial_ai_probability": None,
+        "invisible_face_anomaly": None,
         "pipeline": "Fallback Forensic Scanner (FFT + ELA + Flowchart)",
         "flowchart_analysis": flowchart_analysis
     }
@@ -496,7 +498,9 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                     "manipulated_regions_heatmap": full_res["manipulated_regions_heatmap"],
                     "patch_manipulated_count": full_res["patch_manipulated_count"],
                     "embedding_anomaly_score": embedding_score,
-                    "face_detected": len(faces) > 0,
+                    "face_detected": full_res.get("face_detected", len(faces) > 0),
+                    "facial_ai_probability": full_res.get("facial_ai_probability"),
+                    "invisible_face_anomaly": full_res.get("invisible_face_anomaly"),
                     "flowchart_analysis": full_res.get("flowchart_analysis"),
                     "pipeline": full_res.get("pipeline", "Ensemble Model Pipeline")
                 }
@@ -635,7 +639,10 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                     "confidence_score": full_res["confidence_score"],
                     "manipulated_regions_heatmap": full_res["manipulated_regions_heatmap"],
                     "patch_manipulated_count": full_res["patch_manipulated_count"],
-                    "embedding_anomaly_score": full_res.get("embedding_anomaly_score", 0.0)
+                    "embedding_anomaly_score": full_res.get("embedding_anomaly_score", 0.0),
+                    "face_detected": full_res.get("face_detected", False),
+                    "facial_ai_probability": full_res.get("facial_ai_probability"),
+                    "invisible_face_anomaly": full_res.get("invisible_face_anomaly")
                 }
                 
                 if full_res["confidence_score"] < 0.4:
