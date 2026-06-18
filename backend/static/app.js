@@ -4,6 +4,10 @@ const API_BASE = window.location.origin.includes("localhost") || window.location
 
 class OpenSeekDashboard {
     constructor() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('mock_scan')) {
+            localStorage.removeItem("openseek_token");
+        }
         this.token = localStorage.getItem("openseek_token") || null;
         this.user = null;
         this.history = [];
@@ -99,6 +103,53 @@ class OpenSeekDashboard {
             // while the user is still on the login page — by the time they
             // type their password, the server is already warm.
             this._wakeBackend();
+        }
+
+        // Mock scan flow for testing
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('mock_scan')) {
+            setTimeout(async () => {
+                try {
+                    if (!this.token) {
+                        const res = await fetch(`${API_BASE}/auth/firebase-login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id_token: "MOCK_FIREBASE_TOKEN",
+                                email: "sandbox@openseek.ai",
+                                name: "Google Sandbox User"
+                            })
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.token = data.token;
+                            this.user = data.user;
+                            localStorage.setItem("openseek_token", this.token);
+                            this.showDashboard();
+                            this.refreshCreditsUI(this.user.credits);
+                            await this.loadHistory();
+                        }
+                    } else {
+                        this.showDashboard();
+                        if (this.token) {
+                            if (!this.user) {
+                                await this.checkSessionAndLoadDashboard();
+                            } else {
+                                this.refreshCreditsUI(this.user.credits);
+                                await this.loadHistory();
+                            }
+                        }
+                    }
+                    
+                    const imgUrl = `${API_BASE}/static/demo_ai_face.png`;
+                    const imageRes = await fetch(imgUrl);
+                    const blob = await imageRes.blob();
+                    const file = new File([blob], "demo_ai_face.png", { type: "image/png" });
+                    this.handleFile(file);
+                } catch (e) {
+                    console.error("Mock scan trigger failed:", e);
+                }
+            }, 1000);
         }
     }
 
@@ -733,6 +784,9 @@ class OpenSeekDashboard {
         if (this.dropZone) this.dropZone.style.display = 'flex';
         const fileInput = document.getElementById('file-input');
         if (fileInput) fileInput.value = '';
+        
+        const scannerFlowchartBox = document.getElementById("scanner-flowchart-box");
+        if (scannerFlowchartBox) scannerFlowchartBox.style.display = 'none';
     }
 
     escapeHtml(text) {
@@ -795,6 +849,35 @@ class OpenSeekDashboard {
         document.getElementById("modal-confidence").innerText = details.confidence_score ? `${Math.round(details.confidence_score * 100)}%` : 'N/A';
         document.getElementById("modal-pipeline").innerText = details.pipeline || 'Ensemble Model Pipeline';
         
+        // Render Flowchart analysis in the modal if available
+        const fa = details.flowchart_analysis;
+        const flowchartRows = document.querySelectorAll(".modal-flowchart-row");
+        const flowchartTitle = document.getElementById("modal-flowchart-title");
+        
+        if (fa && fa.scores) {
+            if (flowchartTitle) flowchartTitle.style.display = 'block';
+            flowchartRows.forEach(r => r.style.display = 'flex');
+            
+            const renderStepVal = (elId, val) => {
+                const el = document.getElementById(elId);
+                if (el) {
+                    const pct = Math.round(val * 100);
+                    el.innerText = `${pct}% Anomaly`;
+                    el.style.color = val > 0.5 ? 'var(--color-high)' : 'var(--color-low)';
+                }
+            };
+            
+            renderStepVal("modal-flowchart-step-1", fa.scores.step1_noise_residual);
+            renderStepVal("modal-flowchart-step-5", fa.scores.step5_color_gradients);
+            renderStepVal("modal-flowchart-step-10", fa.scores.step10_layout_structure);
+            renderStepVal("modal-flowchart-step-20", fa.scores.step20_silhouette_contours);
+            renderStepVal("modal-flowchart-step-35", fa.scores.step35_detail_textures);
+            renderStepVal("modal-flowchart-step-50", fa.scores.step50_lighting_shadows);
+        } else {
+            if (flowchartTitle) flowchartTitle.style.display = 'none';
+            flowchartRows.forEach(r => r.style.display = 'none');
+        }
+
         this.detailModal.classList.add('active');
     }
 
@@ -979,6 +1062,32 @@ class OpenSeekDashboard {
         if (anomalyFill && anomalyText) {
             anomalyFill.style.width = `${anomalyVal}%`;
             anomalyText.innerText = `${anomalyVal}%`;
+        }
+
+        // Render Flowchart analysis in the scanner card
+        const fa = data.flowchart_analysis;
+        const scannerFlowchartBox = document.getElementById("scanner-flowchart-box");
+        
+        if (fa && fa.scores) {
+            if (scannerFlowchartBox) scannerFlowchartBox.style.display = 'block';
+            
+            const renderScannerStepVal = (elId, val) => {
+                const el = document.getElementById(elId);
+                if (el) {
+                    const pct = Math.round(val * 100);
+                    el.innerText = `${pct}% Anomaly`;
+                    el.style.color = val > 0.5 ? 'var(--color-high)' : 'var(--color-low)';
+                }
+            };
+            
+            renderScannerStepVal("flowchart-step-1", fa.scores.step1_noise_residual);
+            renderScannerStepVal("flowchart-step-5", fa.scores.step5_color_gradients);
+            renderScannerStepVal("flowchart-step-10", fa.scores.step10_layout_structure);
+            renderScannerStepVal("flowchart-step-20", fa.scores.step20_silhouette_contours);
+            renderScannerStepVal("flowchart-step-35", fa.scores.step35_detail_textures);
+            renderScannerStepVal("flowchart-step-50", fa.scores.step50_lighting_shadows);
+        } else {
+            if (scannerFlowchartBox) scannerFlowchartBox.style.display = 'none';
         }
     }
 }

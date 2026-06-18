@@ -400,6 +400,37 @@
                                 </div>
                             </div>
 
+                            <!-- Generation Flowchart Consistency -->
+                            <div class="flowchart-analysis-container" id="scanner-flowchart-box" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--text-primary);">Generation Step Consistency</h4>
+                                <div class="flowchart-steps-grid" style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                                    <div class="flowchart-step-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                                        <span style="color: var(--text-muted);">Step 1: Noise Residual (Gaussian)</span>
+                                        <span id="flowchart-step-1" style="font-weight: 600; color: var(--color-low);">-</span>
+                                    </div>
+                                    <div class="flowchart-step-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                                        <span style="color: var(--text-muted);">Step 5: Coarse Background/Sky</span>
+                                        <span id="flowchart-step-5" style="font-weight: 600; color: var(--color-low);">-</span>
+                                    </div>
+                                    <div class="flowchart-step-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                                        <span style="color: var(--text-muted);">Step 10: Structural Mountains Layout</span>
+                                        <span id="flowchart-step-10" style="font-weight: 600; color: var(--color-low);">-</span>
+                                    </div>
+                                    <div class="flowchart-step-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                                        <span style="color: var(--text-muted);">Step 20: Foreground Silhouette/Contours</span>
+                                        <span id="flowchart-step-20" style="font-weight: 600; color: var(--color-low);">-</span>
+                                    </div>
+                                    <div class="flowchart-step-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                                        <span style="color: var(--text-muted);">Step 35: Fine Detail Textures/Wings</span>
+                                        <span id="flowchart-step-35" style="font-weight: 600; color: var(--color-low);">-</span>
+                                    </div>
+                                    <div class="flowchart-step-row" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                                        <span style="color: var(--text-muted);">Step 50: Hyper-fine Scales/Lighting/Shadows</span>
+                                        <span id="flowchart-step-50" style="font-weight: 600; color: var(--color-low);">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Scan Another Button -->
                             <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
                                 <button class="btn btn-secondary btn-scan-another" id="btn-scan-another" onclick="app.resetScanner()">
@@ -513,6 +544,32 @@
                 <div class="result-row">
                     <span class="result-row-label">Confidence Score</span>
                     <span class="result-row-value" id="modal-confidence">98.5%</span>
+                </div>
+
+                <div class="modal-section-title" id="modal-flowchart-title" style="margin-top: 15px;">Generation Step Consistency</div>
+                <div class="result-row modal-flowchart-row">
+                    <span class="result-row-label">Step 1: Noise Residual (Gaussian)</span>
+                    <span class="result-row-value" id="modal-flowchart-step-1">-</span>
+                </div>
+                <div class="result-row modal-flowchart-row">
+                    <span class="result-row-label">Step 5: Coarse Background/Sky</span>
+                    <span class="result-row-value" id="modal-flowchart-step-5">-</span>
+                </div>
+                <div class="result-row modal-flowchart-row">
+                    <span class="result-row-label">Step 10: Structural Mountains Layout</span>
+                    <span class="result-row-value" id="modal-flowchart-step-10">-</span>
+                </div>
+                <div class="result-row modal-flowchart-row">
+                    <span class="result-row-label">Step 20: Foreground Silhouette/Contours</span>
+                    <span class="result-row-value" id="modal-flowchart-step-20">-</span>
+                </div>
+                <div class="result-row modal-flowchart-row">
+                    <span class="result-row-label">Step 35: Fine Detail Textures/Wings</span>
+                    <span class="result-row-value" id="modal-flowchart-step-35">-</span>
+                </div>
+                <div class="result-row modal-flowchart-row">
+                    <span class="result-row-label">Step 50: Hyper-fine Scales/Lighting/Shadows</span>
+                    <span class="result-row-value" id="modal-flowchart-step-50">-</span>
                 </div>
             </div>
         </div>

@@ -30,34 +30,84 @@ class FrequencyCNN(nn.Module):
     """
     def __init__(self, input_dim=112): # For 224x224 image, max radius is ~112
         super().__init__()
-        self.fc1 = nn.Linear(input_dim, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, 1)
+        self.fc1 = nn.Linear(input_dim, 128)
+        self.bn1 = nn.BatchNorm1d(128)
+        self.fc2 = nn.Linear(128, 64)
+        self.bn2 = nn.BatchNorm1d(64)
+        self.fc3 = nn.Linear(64, 1)
+        self.dropout = nn.Dropout(0.3)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = self.dropout(F.relu(self.bn1(self.fc1(x))))
+        x = self.dropout(F.relu(self.bn2(self.fc2(x))))
         x = self.fc3(x)
         return x
 
-class ResidualCNN(nn.Module):
+class SRMConv2d(nn.Module):
     """
-    Analyzes the sensor pattern noise (PRNU) residual to verify real cameras.
-    Outputs high probability if PRNU (Real Camera) pattern is authentic.
+    Spatial Rich Model (SRM) high-pass filters.
+    Extracts invisible noise residuals left by AI generators that the naked eye cannot see.
     """
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
-        self.fc1 = nn.Linear(32 * 56 * 56, 128)
-        self.fc2 = nn.Linear(128, 1)
+        # Standard SRM linear and non-linear filter kernels
+        q1 = [0, 0, 0, 0, 0]
+        q2 = [0, -1, 2, -1, 0]
+        q3 = [0, 2, -4, 2, 0]
+        q4 = [0, -1, 2, -1, 0]
+        q5 = [0, 0, 0, 0, 0]
+        f1 = np.array([q1, q2, q3, q4, q5], dtype=np.float32) / 4.0
+
+        q1 = [-1, 2, -2, 2, -1]
+        q2 = [2, -6, 8, -6, 2]
+        q3 = [-2, 8, -12, 8, -2]
+        q4 = [2, -6, 8, -6, 2]
+        q5 = [-1, 2, -2, 2, -1]
+        f2 = np.array([q1, q2, q3, q4, q5], dtype=np.float32) / 12.0
+
+        q1 = [0, 0, 0, 0, 0]
+        q2 = [0, 0, 0, 0, 0]
+        q3 = [0, 1, -2, 1, 0]
+        q4 = [0, 0, 0, 0, 0]
+        q5 = [0, 0, 0, 0, 0]
+        f3 = np.array([q1, q2, q3, q4, q5], dtype=np.float32) / 2.0
+
+        # Stack into shape (3, 1, 5, 5) and repeat for 3 RGB input channels
+        filters = np.stack([f1, f2, f3], axis=0)
+        filters = np.expand_dims(filters, axis=1)
+        filters = np.repeat(filters, 3, axis=1) # (3, 3, 5, 5)
+        
+        self.weight = nn.Parameter(torch.from_numpy(filters), requires_grad=False)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
+        return F.conv2d(x, self.weight, padding=2)
+
+class ResidualCNN(nn.Module):
+    """
+    Analyzes the sensor pattern noise (PRNU) and AI upsampling anomalies via SRM filtering.
+    """
+    def __init__(self):
+        super().__init__()
+        self.srm = SRMConv2d()
+        # SRM outputs 3 channels (one for each filter type)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+        
+        # We process 224x224 images. Pool twice -> 56x56
+        self.fc1 = nn.Linear(64 * 56 * 56, 256)
+        self.dropout = nn.Dropout(0.4)
+        self.fc2 = nn.Linear(256, 1)
+
+    def forward(self, x):
+        # Extract invisible noise residuals first
+        noise_residual = self.srm(x)
+        x = self.pool(F.relu(self.bn1(self.conv1(noise_residual))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
         x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
+        x = self.dropout(F.relu(self.fc1(x)))
         x = self.fc2(x)
         return x
 
@@ -69,8 +119,8 @@ class AdvancedForensicEnsemble(nn.Module):
         # 0. Pre-Classifier (Photo vs Illustration) via MobileNet
         self.content_type_classifier = ContentTypeClassifier(device=self.device)
 
-        # 1. Spatial Model (EfficientNet-B0)
-        self.spatial_model = models.efficientnet_b0(pretrained=False)
+        # 1. Spatial Model (EfficientNetV2-S for highly accurate spatial anomaly detection)
+        self.spatial_model = models.efficientnet_v2_s(weights=None)
         self.spatial_model.classifier[1] = nn.Linear(self.spatial_model.classifier[1].in_features, 1)
         self.spatial_model.to(self.device).eval()
 
@@ -391,7 +441,7 @@ class AdvancedForensicEnsemble(nn.Module):
                             neural_prob = max(0.0, base_score - (0.40 * authentic_prnu_prob))
                         else:
                             # illustration pipeline
-                            diff_data = self.diffusion_detector.predict(input_tensor)
+                            diff_data = self.diffusion_detector.predict(input_tensor, image_path=image_path)
                             diffusion_score = diff_data["ai_probability"]
                             neural_prob = (0.50 * diffusion_score) + (0.25 * embedding_dist_score) + (0.25 * freq_prob)
             except Exception as e:
@@ -423,8 +473,28 @@ class AdvancedForensicEnsemble(nn.Module):
                 else:
                     ai_probability = 0.50 + ((ai_probability - 0.50) / 0.50) * 0.45
             
+            # Calculate flowchart consistency analysis
+            try:
+                analyzer_res = self.diffusion_detector.analyzer.analyze_image(image_path)
+                analyzer_ai_prob = analyzer_res["ai_probability"]
+                
+                # Mathematical trace extraction is the golden source of truth when NN is untrained.
+                # If the image has mathematically impossible artifacts, force the AI probability up.
+                if hf_probability is None:
+                    ai_probability = max(ai_probability, analyzer_ai_prob)
+                    
+                flowchart_analysis = {
+                    "is_ai": analyzer_res["is_ai_generated"],
+                    "scores": analyzer_res["scores"],
+                    "metrics": analyzer_res["metrics"]
+                }
+            except Exception as e:
+                print(f"[OpenSeek] Flowchart analyzer failed: {e}")
+                flowchart_analysis = None
+                
             ai_probability = round(min(0.99, max(0.01, ai_probability)), 4)
-            
+
+            # Calculate classes based on final blended flowchart + neural score
             if ai_probability > 0.5:
                 predicted_class = "Diffusion_AI" if is_illustration else "Deepfake_AI"
             else:
@@ -435,7 +505,7 @@ class AdvancedForensicEnsemble(nn.Module):
                 risk_level = "Medium"
             if ai_probability > 0.65:
                 risk_level = "High"
-                
+
             return {
                 "content_type": content_type,
                 "ai_probability": ai_probability,
@@ -446,7 +516,8 @@ class AdvancedForensicEnsemble(nn.Module):
                 "patch_manipulated_count": int(ela_score * 100),
                 "embedding_anomaly_score": round(meta_score, 4),
                 "face_detected": has_face,
-                "pipeline": "Ensemble ViT + Spectral FFT + ELA Analyzer" if self.hf_model else "Ensemble Spectral FFT + ELA Analyzer"
+                "pipeline": "Ensemble ViT + Spectral FFT + ELA Analyzer" if self.hf_model else "Ensemble Spectral FFT + ELA Analyzer",
+                "flowchart_analysis": flowchart_analysis
             }
 
         with torch.no_grad():
@@ -490,7 +561,7 @@ class AdvancedForensicEnsemble(nn.Module):
                         
                 else:
                     # ── ILLUSTRATION / DIFFUSION PIPELINE ──
-                    diff_data = self.diffusion_detector.predict(input_tensor)
+                    diff_data = self.diffusion_detector.predict(input_tensor, image_path=image_path)
                     diffusion_score = diff_data["ai_probability"]
                     predicted_class = diff_data["predicted_class"]
                     
@@ -527,6 +598,21 @@ class AdvancedForensicEnsemble(nn.Module):
             else:
                 predicted_class = "Real"
 
+        # Collect flowchart analysis
+        flowchart_analysis = None
+        if 'diff_data' in locals() and diff_data is not None and "flowchart_analysis" in diff_data:
+            flowchart_analysis = diff_data["flowchart_analysis"]
+        else:
+            try:
+                analyzer_res = self.diffusion_detector.analyzer.analyze_image(image_path)
+                flowchart_analysis = {
+                    "is_ai": analyzer_res["is_ai_generated"],
+                    "scores": analyzer_res["scores"],
+                    "metrics": analyzer_res["metrics"]
+                }
+            except Exception:
+                pass
+
         # --- Risk Categorization ---
         if ai_probability <= 0.40:
             risk_level = "Low"
@@ -554,5 +640,6 @@ class AdvancedForensicEnsemble(nn.Module):
             "manipulated_regions_heatmap": f"data:image/jpeg;base64,{heatmap_base64}" if heatmap_base64 else None,
             "patch_manipulated_count": manipulated_count,
             "embedding_anomaly_score": round(embedding_dist_score, 4),
-            "pipeline": pipeline_name
+            "pipeline": pipeline_name,
+            "flowchart_analysis": flowchart_analysis
         }
