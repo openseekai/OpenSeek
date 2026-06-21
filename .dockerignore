@@ -1,0 +1,50 @@
+# Keep the Docker build context small and free of secrets / large artifacts.
+
+# Version control & CI
+.git/
+.github/
+.gitignore
+
+# Python caches & envs
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/venv/
+backend/.venv/
+.pytest_cache/
+backend/.pytest_cache/
+
+# Secrets & local env
+.env
+.env.*
+**/firebase_service_account.json
+**/*service_account*.json
+*.pem
+*.key
+
+# Databases & logs (runtime state, never bake into an image)
+*.db
+*.sqlite3
+*.log
+
+# Datasets, uploads, checkpoints (huge, fetched/generated at runtime)
+backend/data_smoke/
+backend/data.zip
+backend/training/checkpoints/
+backend/training/datasets/
+temp_uploads/
+backend/temp_uploads/
+runs/
+
+# Notebooks & local scratch
+*.ipynb
+colab_code.py
+dummy_test.jpg
+backend/dummy_test.jpg
+
+# Docs / editor
+*.md
+.vscode/
+.idea/
+.DS_Store

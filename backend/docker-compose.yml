@@ -2,7 +2,9 @@ version: "3.9"
 
 services:
   openseek-backend:
-    build: .
+    build:
+      context: ..              # repo root — single canonical Dockerfile
+      dockerfile: Dockerfile
     image: openseek-backend:latest
     container_name: openseek-api
     restart: unless-stopped
@@ -11,6 +13,7 @@ services:
     volumes:
       - openseek-data:/app/data   # SQLite persistence
     environment:
+      - PORT=8000                 # match the published port + healthcheck below
       - DB_PATH=/app/data/openseek.db
       - DEBUG=false
     healthcheck:

@@ -69,6 +69,20 @@ We follow a standard GitHub Fork & Pull Request workflow:
 
 ---
 
+## 🏗️ Understanding the Codebase (Architecture Guide)
+
+For new contributors, here is how the core forensic engine is structured:
+
+*   `backend/models/advanced_ensemble.py`: **The Core Brain**. This file routes the image to the appropriate models, combines the confidence scores, and generates the final `forensic_report`. If you are adding a new detection metric, you must initialize it and call it here.
+*   `backend/models/forensics/purifier.py`: The **Adversarial Purifier**. Contains defenses against cloaking and evasion noise.
+*   `backend/models/forensics/biological.py`: Analyzes corneal specular highlights and facial physiological consistency.
+*   `backend/models/forensics/dct.py`: Analyzes the frequency domain for 8x8 JPEG grid boundary compression anomalies.
+*   `backend/models/forensics/generation_step_analyzer.py`: Checks for diffusion model physics and noise traces.
+
+If you want to add a completely new forensic model (like an Audio analyzer or a Video frame-consistency check), please create a new file in `backend/models/forensics/` and hook it into `advanced_ensemble.py`.
+
+---
+
 ## 🎨 Design and Coding Style
 * **Backend (Python)**: Follow PEP 8 guidelines. Use type hints where appropriate.
 * **Frontend (Extension)**: Keep HTML/CSS/JS modular. Utilize the premium custom variable design system defined in `popup.css`.

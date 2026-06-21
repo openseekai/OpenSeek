@@ -3,10 +3,10 @@ OpenSeek — Integration Test Suite for User Dashboard
 """
 from __future__ import annotations
 
-import pytest
 import os
-import sqlite3
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
 # Mock DB_PATH for tests so it doesn't modify local openseek_cache.db
@@ -17,12 +17,12 @@ def setup_test_db():
     """Setup and clean test database before/after each test."""
     import user_db
     user_db.DB_PATH = TEST_DB_PATH
-    
+
     # Initialize clean DB structure
     user_db.init_user_db()
-    
+
     yield
-    
+
     # Teardown: remove test DB file
     if os.path.exists(TEST_DB_PATH):
         try:
@@ -59,20 +59,20 @@ def test_dashboard_flow(client):
     # 1. Register a test user
     email = "tester@openseek.ai"
     password = "password123"
-    
+
     reg_resp = client.post("/auth/register", json={"email": email, "password": password})
     assert reg_resp.status_code == 200
     assert reg_resp.json()["status"] == "success"
-    
+
     # 2. Login to get session token
     login_resp = client.post("/auth/login", json={"email": email, "password": password})
     assert login_resp.status_code == 200
     login_data = login_resp.json()
     assert "token" in login_data
     token = login_data["token"]
-    
+
     auth_headers = {"Authorization": f"Bearer {token}"}
-    
+
     # 3. Get profile details (/auth/me)
     me_resp = client.get("/auth/me", headers=auth_headers)
     assert me_resp.status_code == 200
@@ -85,7 +85,6 @@ def test_dashboard_flow(client):
     assert len(history_resp.json()["history"]) == 0
 
     # 5. Scan an image (with headers) -> expects credit deduction and log history
-    import struct
     fake_jpg = (
         b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
         b"\xff\xd9"
@@ -106,7 +105,7 @@ def test_dashboard_flow(client):
 
         # Verify credit is deducted from 10 to 9
         assert scan_data["remaining_credits"] == 9
-        
+
     # 6. Check that scan is added to the user's history log
     history_resp2 = client.get("/user/history", headers=auth_headers)
     assert history_resp2.status_code == 200
@@ -115,16 +114,16 @@ def test_dashboard_flow(client):
     assert history_list[0]["filename"] == "test_real.jpg"
     assert history_list[0]["risk_level"] == "Low"
     assert history_list[0]["is_ai_generated"] is False
-    
+
     # 7. Test unauthorized operations
     bad_headers = {"Authorization": "Bearer badtoken"}
     unauth_resp = client.get("/auth/me", headers=bad_headers)
     assert unauth_resp.status_code == 401
-    
+
     # 8. Logout session
     logout_resp = client.post("/auth/logout", headers=auth_headers)
     assert logout_resp.status_code == 200
-    
+
     # Verify session is deleted
     me_after_logout = client.get("/auth/me", headers=auth_headers)
     assert me_after_logout.status_code == 401

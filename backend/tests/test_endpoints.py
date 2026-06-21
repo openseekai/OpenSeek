@@ -3,8 +3,9 @@ OpenSeek — Integration Test Suite
 """
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -82,7 +83,6 @@ class TestHealth:
 class TestDetectImage:
     def _fake_jpg(self):
         """Minimal valid JPEG bytes."""
-        import struct
         return (
             b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
             b"\xff\xd9"

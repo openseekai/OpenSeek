@@ -15,16 +15,14 @@ Collections used in Firestore:
 """
 
 import hashlib
-import secrets
 import json
 import os
+import secrets
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from threading import Lock
-import numpy as np
 
 # ── Firebase Admin SDK ────────────────────────────────────────────────────────
-
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -123,7 +121,7 @@ def _maybe_reset_credits(user_ref, data: dict) -> dict:
     updated data dict. If no, return the same data dict unchanged.
     This avoids the extra Firestore read that the old apply_daily_credits_reset did.
     """
-    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    current_date = datetime.now(UTC).strftime("%Y-%m-%d")
     if data.get("last_reset_date", "") != current_date:
         user_ref.update({"credits": 10, "last_reset_date": current_date})
         return {**data, "credits": 10, "last_reset_date": current_date}
@@ -146,8 +144,8 @@ def register_user(email: str, password: str) -> dict:
         raise ValueError("Email is already registered")
 
     pwd_hash, salt_hex = hash_password(password)
-    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    now_iso = datetime.now(timezone.utc).isoformat()
+    current_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    now_iso = datetime.now(UTC).isoformat()
 
     doc_ref = users_ref.document()
     doc_ref.set({
@@ -196,7 +194,7 @@ def create_session(user_id: str, user_email: str = "", user_credits: int = 10) -
     Accepts optional pre-known user_email/credits to skip an extra Firestore read.
     """
     token = secrets.token_hex(32)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db = _get_db()
 
     # Only fetch user doc if email wasn't passed in
@@ -241,7 +239,7 @@ def get_user_by_session(token: str) -> dict | None:
         return None
 
     session = session_doc.to_dict()
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     if session.get("expires_at", "") < now_iso:
         session_doc.reference.delete()
         return None
@@ -328,15 +326,15 @@ def log_scan(user_id: str, filename: str, ai_probability: float,
     """Log a scan event in the user's history collection."""
     db = _get_db()
     file_hash = details.get("file_hash") if isinstance(details, dict) else None
-    
+
     # Sanitize all inputs to convert NumPy types to standard Python types
     ai_probability = _sanitize_numpy(ai_probability)
     is_ai_generated = _sanitize_numpy(is_ai_generated)
     details = _sanitize_numpy(details)
-    
+
     db.collection("scans").add({
         "user_id": user_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "filename": filename,
         "ai_probability": ai_probability,
         "risk_level": risk_level,
@@ -378,7 +376,7 @@ def is_duplicate_scan_db(user_id: str, file_hash: str) -> bool:
         return False
     # Fetch recent history (which is already sorted by timestamp descending)
     history = get_user_history(user_id, limit=5)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for scan in history:
         scan_hash = scan.get("file_hash") or scan.get("details", {}).get("file_hash")
         if scan_hash == file_hash:

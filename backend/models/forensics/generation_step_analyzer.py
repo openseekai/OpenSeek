@@ -1,8 +1,8 @@
+import os
+
 import cv2
 import numpy as np
-import os
-import torch
-import torch.nn as nn
+
 
 class GenerationStepAnalyzer:
     """
@@ -107,14 +107,14 @@ class GenerationStepAnalyzer:
         """
         laplacian = cv2.Laplacian(img_gray, cv2.CV_64F)
         var = np.var(laplacian)
-        
+
         # Calculate skewness and kurtosis
         std = np.std(laplacian)
         if std < 1e-6:
             return 0.5, {"kurtosis": 3.0, "autocorrelation": 0.0, "variance": 0.0}
-            
+
         mean_diff = laplacian - np.mean(laplacian)
-        skew = np.mean(mean_diff ** 3) / (std ** 3 + 1e-9)
+        np.mean(mean_diff ** 3) / (std ** 3 + 1e-9)
         kurt = np.mean(mean_diff ** 4) / (std ** 4 + 1e-9)
 
         # Autocorrelation of residual to catch grid pattern artifacts
@@ -127,7 +127,7 @@ class GenerationStepAnalyzer:
         # Generative models deviate significantly due to spatial constraints and have periodic grid autocorrelation.
         kurt_dev = abs(kurt - 3.0)
         autocorr_anomaly = abs(autocorr)
-        
+
         score = min(1.0, max(0.0, (kurt_dev / 12.0) + (autocorr_anomaly * 8.0)))
         return score, {
             "kurtosis": float(kurt),
@@ -245,7 +245,7 @@ class GenerationStepAnalyzer:
         hist, _ = np.histogram(lbp, bins=256, range=(0, 256))
         hist = hist / (hist.sum() + 1e-9)
         lbp_entropy = -np.sum(hist * np.log2(hist + 1e-9))
-        
+
         # Microtexture homogeneity (ratio of the dominant micro-pattern)
         max_bin_ratio = np.max(hist)
 
@@ -273,7 +273,7 @@ class GenerationStepAnalyzer:
         cy, cx = h // 2, w // 2
         y, x = np.ogrid[-cy:h-cy, -cx:w-cx]
         r = np.sqrt(x*x + y*y)
-        
+
         mid_energy = np.sum(mag[(r > (cx * 0.2)) & (r < (cx * 0.5))])
         high_energy = np.sum(mag[(r >= (cx * 0.5)) & (r < (cx * 0.95))])
         energy_ratio = high_energy / (mid_energy + 1e-9)
@@ -283,7 +283,7 @@ class GenerationStepAnalyzer:
         _, thresholded = cv2.threshold(img_gray, 200, 255, cv2.THRESH_BINARY)
         gx = cv2.Sobel(img_gray, cv2.CV_64F, 1, 0, ksize=3)
         gy = cv2.Sobel(img_gray, cv2.CV_64F, 0, 1, ksize=3)
-        
+
         highlight_gx = gx[thresholded > 0]
         highlight_gy = gy[thresholded > 0]
 
@@ -294,7 +294,7 @@ class GenerationStepAnalyzer:
             cos_sum = np.sum(np.cos(angles))
             r_val = np.sqrt(sin_sum**2 + cos_sum**2) / len(angles)
             # Higher circular variance = lighting is coming from conflicting directions
-            lighting_variance = 1.0 - r_val 
+            lighting_variance = 1.0 - r_val
 
         # High lighting direction variance and anomalous frequency energy ratios suggest AI synthesis
         score = min(1.0, max(0.0, (lighting_variance * 1.6) + (0.4 - energy_ratio)))

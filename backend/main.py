@@ -1,57 +1,82 @@
 import os
+
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 from dotenv import load_dotenv
+
 load_dotenv()
-import io
-import shutil
-import uuid
 import hashlib
 import json
-import tempfile
-import zipfile
 import sqlite3
+import tempfile
+import uuid
+import zipfile
+
 import cv2
-import numpy as np
-from typing import Optional
-import torch
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException, Header, Request, BackgroundTasks, Response
+import torch
+from config import (
+    ALLOWED_IMAGE_TYPES,
+    ALLOWED_ORIGINS,
+    DEBUG,
+    MAX_IMAGE_SIZE_MB,
+    setup_logging,
+)
+from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from observability import init_sentry
 from pydantic import BaseModel
-
-from models.advanced_ensemble import AdvancedForensicEnsemble
-from utils.face_detector import get_face_detector
-
+from ratelimit import install_rate_limiting, rate_limit
 from utils.serialization import sanitize_numpy as _sanitize_numpy
+from utils.validators import save_upload_limited, validate_image_type
+
+logger = setup_logging()
+init_sentry()
 
 # ── Database Cache Initialization ───────────────────────────────────────────
-DB_PATH = "openseek_cache.db"
+# Honour DB_PATH so docker-compose's mounted volume actually persists the cache.
+DB_PATH = os.getenv("DB_PATH", "openseek_cache.db")
 
 # ── Database backend: prefer Firestore, fall back to SQLite ─────────────────
 _using_firestore = False
 try:
-    from firebase_db import (
-        init_user_db, register_user, authenticate_user, create_session,
-        get_user_by_session, delete_session, check_and_deduct_credit,
-        log_scan, get_user_history, add_credits, get_or_create_firebase_user
-    )
     # Quick smoke-test: will raise if credentials are missing
     from firebase_db import _get_db as _fb_get_db
+    from firebase_db import (
+        add_credits,
+        authenticate_user,
+        check_and_deduct_credit,
+        create_session,
+        delete_session,
+        get_or_create_firebase_user,
+        get_user_by_session,
+        get_user_history,
+        init_user_db,
+        log_scan,
+        register_user,
+    )
     _fb_get_db()
     _using_firestore = True
-    print("[OpenSeek API] 🔥 Using Firebase Firestore as the user database.")
+    logger.info("[OpenSeek API] 🔥 Using Firebase Firestore as the user database.")
 except Exception as _fb_err:
-    print(f"[OpenSeek API] ⚠️  Firestore unavailable ({_fb_err}). Falling back to SQLite.")
+    logger.warning(f"[OpenSeek API] ⚠️  Firestore unavailable ({_fb_err}). Falling back to SQLite.")
     from user_db import (
-        init_user_db, register_user, authenticate_user, create_session,
-        get_user_by_session, delete_session, check_and_deduct_credit,
-        log_scan, get_user_history, add_credits
+        add_credits,
+        authenticate_user,
+        check_and_deduct_credit,
+        create_session,
+        delete_session,
+        get_user_by_session,
+        get_user_history,
+        init_user_db,
+        log_scan,
+        register_user,
     )
     def get_or_create_firebase_user(email: str) -> dict:
         """SQLite fallback for Google/Firebase sign-in."""
-        import sqlite3, secrets as _sec
+        import secrets as _sec
+        import sqlite3
         email = email.strip().lower()
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -76,7 +101,7 @@ except ImportError:
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS scan_cache 
+    c.execute('''CREATE TABLE IF NOT EXISTS scan_cache
                  (hash TEXT PRIMARY KEY, response TEXT)''')
     conn.commit()
     conn.close()
@@ -86,6 +111,7 @@ def init_db():
 # Key: (user_id, file_hash) → timestamp of last scan.
 import time as _time
 from threading import Lock as _Lock
+
 _DEDUP_CACHE: dict = {}     # (user_id, file_hash) → float (epoch time)
 _DEDUP_LOCK = _Lock()
 DEDUP_WINDOW_S = 30         # seconds
@@ -94,7 +120,7 @@ def _is_duplicate_scan(user_id, file_hash: str) -> bool:
     """Return True if this (user, hash) combo was scanned in the last 30s."""
     key = (str(user_id), file_hash)
     now = _time.time()
-    
+
     # 1. Check in-memory fast lock first
     in_memory_dup = False
     with _DEDUP_LOCK:
@@ -116,7 +142,7 @@ def _is_duplicate_scan(user_id, file_hash: str) -> bool:
         if is_duplicate_scan_db(user_id, file_hash):
             return True
     except Exception as e:
-        print(f"[OpenSeek API] DB duplicate scan check failed: {e}")
+        logger.error(f"[OpenSeek API] DB duplicate scan check failed: {e}")
 
     return False
 
@@ -141,7 +167,7 @@ def get_cached_result(file_hash):
 def set_cached_result(file_hash, response):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('INSERT OR REPLACE INTO scan_cache (hash, response) VALUES (?, ?)', 
+    c.execute('INSERT OR REPLACE INTO scan_cache (hash, response) VALUES (?, ?)',
               (file_hash, json.dumps(_sanitize_numpy(response))))
     conn.commit()
     conn.close()
@@ -158,50 +184,73 @@ class MediaUrlRequest(BaseModel):
 
 from contextlib import asynccontextmanager
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _ensemble, _audio_detector, _video_processor, _face_detector
     init_db()
     init_user_db()
-    
+
     # Check if we are running in tests (pytest)
     import sys
     if "pytest" in sys.modules or os.getenv("TESTING") == "1":
-        print("[OpenSeek API] 🧪 Test environment detected. Skipping actual model loading to keep mocks intact.")
+        logger.warning("[OpenSeek API] 🧪 Test environment detected. Skipping actual model loading to keep mocks intact.")
         yield
         return
 
     # Check if we are delegating inference to an external URL (Google Colab / GPU VPS)
     colab_url = os.getenv("COLAB_MODEL_URL") or os.getenv("EXTERNAL_MODEL_URL")
     if colab_url:
-        print(f"[OpenSeek API] 🌐 Hybrid Mode: Model inference delegated to external URL: {colab_url}")
+        logger.info(f"[OpenSeek API] 🌐 Hybrid Mode: Model inference delegated to external URL: {colab_url}")
         yield
         return
-    
+
     # Optimize PyTorch memory usage on CPU (reduces thread-related RAM overhead)
-    import torch
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
-    
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[OpenSeek API] Loading Advanced Ensemble Pipeline on {device}…")
-    
-    _ensemble = AdvancedForensicEnsemble(device)
-    _face_detector = get_face_detector()
-    
+
+    # Engine selection (imports are lazy so lean never loads torchvision/mediapipe):
+    #   OPENSEEK_ENGINE=lean (default) → just the haywoodsloan detector (~1 GB, CPU,
+    #     same accuracy, fits small hosts like Railway)
+    #   OPENSEEK_ENGINE=full           → heavy multi-model ensemble (Grad-CAM, CLIP, …)
+    engine_mode = os.getenv("OPENSEEK_ENGINE", "lean").lower()
+    if engine_mode == "full":
+        logger.info(f"[OpenSeek API] Loading FULL ensemble on {device}…")
+        from models.advanced_ensemble import AdvancedForensicEnsemble
+        from utils.face_detector import get_face_detector
+        _ensemble = AdvancedForensicEnsemble(device)
+        _face_detector = get_face_detector()
+    else:
+        logger.info(f"[OpenSeek API] Loading LEAN detector on {device}…")
+        from models.lean_detector import LeanDetector
+        _ensemble = LeanDetector(device)
+        _face_detector = None
+
     # FP16 Optimization via PyTorch autocast & cuDNN autotuning
     if torch.cuda.is_available():
-        print("[OpenSeek API] GPU Detected! Enabling cuDNN auto-tuner benchmarks...")
+        logger.info("[OpenSeek API] GPU Detected! Enabling cuDNN auto-tuner benchmarks...")
         torch.backends.cudnn.benchmark = True
-        
+
     # Free up memory allocated during loading
     import gc
     gc.collect()
-    
-    print("[OpenSeek API] 🟢 Research-Grade Multi-Modal Engine Ready")
+
+    logger.info("[OpenSeek API] 🟢 Research-Grade Multi-Modal Engine Ready")
     yield
 
 app = FastAPI(title="OpenSeek Ultimate Forensic Service", lifespan=lifespan)
+install_rate_limiting(app)
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    # Safety net: log (and Sentry-capture, if enabled) any error not already
+    # turned into an HTTPException, and return a clean 500 instead of a stack trace.
+    logger.exception(f"Unhandled error on {request.method} {request.url.path}: {exc}")
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 import sys
 from unittest.mock import MagicMock
@@ -227,7 +276,7 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -259,55 +308,56 @@ def calculate_fft_anomaly(image_path: str) -> float:
         score = (ratio - 0.35) / (0.8 - 0.35)
         return min(1.0, max(0.0, score))
     except Exception as e:
-        print(f"[FFT Fallback Analyzer] Error: {e}")
+        logger.error(f"[FFT Fallback Analyzer] Error: {e}")
         return 0.25
 
-def calculate_ela_analysis(image_path: str) -> tuple[float, Optional[str]]:
+def calculate_ela_analysis(image_path: str) -> tuple[float, str | None]:
     try:
-        from PIL import Image, ImageChops
-        import numpy as np
-        import tempfile
-        import os
-        import io
         import base64
-        
+        import io
+        import os
+        import tempfile
+
+        import numpy as np
+        from PIL import Image, ImageChops
+
         orig = Image.open(image_path).convert('RGB')
-        
+
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
             tmp_name = tmp.name
         try:
             orig.save(tmp_name, 'JPEG', quality=90)
             resaved = Image.open(tmp_name)
             diff = ImageChops.difference(orig, resaved)
-            
+
             extrema = diff.getextrema()
             max_diff = max([ex[1] for ex in extrema])
             if max_diff == 0:
                 max_diff = 1
-                
+
             scale = 255.0 / max_diff
             diff_arr = np.array(diff)
             # Scale differences to make invisible modifications highly visible to the user
             enhanced_arr = np.clip(diff_arr * scale, 0, 255).astype(np.uint8)
             enhanced_diff = Image.fromarray(enhanced_arr)
-            
+
             # Compute variance of error levels
             diff_gray = enhanced_diff.convert('L')
             arr = np.array(diff_gray)
             std_val = np.std(arr)
             score = std_val / 64.0
-            
+
             # Convert enhanced diff to JPEG base64 to show as the heatmap
             buffered = io.BytesIO()
             enhanced_diff.save(buffered, format="JPEG")
             base64_heatmap = base64.b64encode(buffered.getvalue()).decode("utf-8")
-            
+
             return min(1.0, max(0.0, score)), base64_heatmap
         finally:
             if os.path.exists(tmp_name):
                 os.remove(tmp_name)
     except Exception as e:
-        print(f"[ELA Fallback Analyzer] Error: {e}")
+        logger.error(f"[ELA Fallback Analyzer] Error: {e}")
         return 0.25, None
 
 def get_fallback_analysis_result(temp_path: str) -> dict:
@@ -317,19 +367,19 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
         meta = MetadataAnalyzer.scan(temp_path)
     except Exception:
         meta = {"has_ai_metadata": False, "suspicion_score": 0.2, "anomalies": []}
-        
+
     fft_score = calculate_fft_anomaly(temp_path)
     ela_score, base64_heatmap = calculate_ela_analysis(temp_path)
     meta_score = meta.get("suspicion_score", 0.0)
-    
+
     if meta.get("has_ai_metadata"):
         prob = 0.98
     else:
         prob = (0.40 * fft_score) + (0.40 * ela_score) + (0.20 * meta_score)
-        
+
     prob = round(min(0.99, max(0.01, prob)), 4)
     is_ai = prob > 0.5
-    
+
     # Flowchart-Guided Generation Step Consistency Analysis
     flowchart_analysis = None
     try:
@@ -346,30 +396,30 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
             prob = round(min(0.99, max(0.01, prob)), 4)
             is_ai = prob > 0.5
     except Exception as e:
-        print(f"[OpenSeek API] Fallback flowchart consistency analyzer failed: {e}")
-    
+        logger.error(f"[OpenSeek API] Fallback flowchart consistency analyzer failed: {e}")
+
     if prob <= 0.40:
         risk = "Low"
     elif prob <= 0.65:
         risk = "Medium"
     else:
         risk = "High"
-        
+
     content_type = "Photograph"
     if meta.get("has_ai_metadata"):
         content_type = "AI Generated Image"
     elif prob > 0.8:
         content_type = "AI Generated Image"
-        
+
     predicted_class = "AI" if is_ai else "Real"
     agreement = 1.0 - abs(fft_score - ela_score)
     confidence = round(0.70 + (0.25 * agreement), 4)
-    
+
     if confidence < 0.4:
         risk = "Uncertain"
-        
+
     heatmap_uri = f"data:image/jpeg;base64,{base64_heatmap}" if base64_heatmap else None
-        
+
     return {
         "is_ai_generated": is_ai,
         "ai_probability": prob,
@@ -388,7 +438,8 @@ def get_fallback_analysis_result(temp_path: str) -> dict:
     }
 
 @app.post("/detect-image")
-async def detect_image(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+@rate_limit()
+async def detect_image(request: Request, file: UploadFile = File(...), authorization: str | None = Header(None)):
     """Advanced Image Deepfake Detection (Spatial + ViT + Freq + Face)"""
     token = None
     user = None
@@ -408,9 +459,9 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
     temp_dir = "temp_uploads"
     os.makedirs(temp_dir, exist_ok=True)
     temp_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file.filename}")
-    
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+
+    validate_image_type(file.content_type, ALLOWED_IMAGE_TYPES)
+    save_upload_limited(file, temp_path, MAX_IMAGE_SIZE_MB * 1024 * 1024)
 
     file_hash = compute_hash(temp_path)
     cached = get_cached_result(file_hash)
@@ -420,7 +471,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
         if user:
             # Deduplication: don't charge/log if same file scanned within 30s
             if _is_duplicate_scan(user["id"], file_hash):
-                print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
+                logger.info(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
                 cached_res["remaining_credits"] = user["credits"]
                 return _sanitize_numpy(cached_res)
             if not check_and_deduct_credit(user["id"], 1, token):
@@ -448,21 +499,21 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                     with open(temp_path, "rb") as f:
                         files = {"file": (file.filename, f, file.content_type)}
                         target_url = f"{colab_url.rstrip('/')}/analyze"
-                        print(f"[OpenSeek API] Forwarding image to external inference server: {target_url}")
+                        logger.info(f"[OpenSeek API] Forwarding image to external inference server: {target_url}")
                         response = await client.post(target_url, files=files)
-                        
+
                         if response.status_code == 200:
                             response_data = response.json()
                         else:
-                            print(f"[OpenSeek API] External server returned {response.status_code}. Falling back to internal models.")
+                            logger.warning(f"[OpenSeek API] External server returned {response.status_code}. Falling back to internal models.")
             except Exception as e:
-                print(f"[OpenSeek API] External inference connection failed ({e}). Falling back to internal models.")
-                
+                logger.error(f"[OpenSeek API] External inference connection failed ({e}). Falling back to internal models.")
+
         if response_data is None:
             if _ensemble is not None:
                 # 1. Full Image Analysis (deep mode: include Grad-CAM + patch scan)
                 full_res = _ensemble.forward_analyze(temp_path, fast=False)
-                
+
                 # 2. Face-Focused Layer (quick detection only, no second full pass)
                 faces = []
                 if _face_detector is not None:
@@ -471,23 +522,23 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                         faces = _face_detector.detect(img_cv)
                     except Exception:
                         pass
-                
+
                 final_probability = full_res["ai_probability"]
-                
+
                 # If faces found, boost probability slightly (no slow second forward pass)
                 if faces:
                     final_probability = min(1.0, full_res["ai_probability"] * 1.05)
-                
+
                 # Re-calc risk level logic
                 if final_probability <= 0.40: risk = "Low"
                 elif final_probability <= 0.65: risk = "Medium"
                 else: risk = "High"
-                
+
                 # Pull new phase 9 architectural attributes
                 content_type = full_res.get("content_type", "Photograph")
                 predicted_class = full_res.get("predicted_class", "Real")
                 embedding_score = full_res.get("embedding_anomaly_score", 0.0)
-                    
+
                 response_data = {
                     "is_ai_generated": final_probability > 0.5,
                     "ai_probability": round(final_probability, 4),
@@ -502,20 +553,24 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
                     "facial_ai_probability": full_res.get("facial_ai_probability"),
                     "invisible_face_anomaly": full_res.get("invisible_face_anomaly"),
                     "flowchart_analysis": full_res.get("flowchart_analysis"),
-                    "pipeline": full_res.get("pipeline", "Ensemble Model Pipeline")
+                    "pipeline": full_res.get("pipeline", "Ensemble Model Pipeline"),
+                    "forensic_report": full_res.get("forensic_report"),
+                    "dct_anomaly_score": full_res.get("dct_anomaly_score", 0.0),
+                    "adversarial_noise_score": full_res.get("adversarial_noise_score", 0.0),
+                    "attributed_generator": full_res.get("attributed_generator", "Unknown")
                 }
-                
+
                 if full_res["confidence_score"] < 0.4:
                     response_data["risk_level"] = "Uncertain"
                     response_data["flag"] = "Low Confidence Detection"
             else:
-                print("[OpenSeek API] Local ensemble model is not loaded (running in low-memory environment). Using fallback logic.")
+                logger.warning("[OpenSeek API] Local ensemble model is not loaded (running in low-memory environment). Using fallback logic.")
                 response_data = get_fallback_analysis_result(temp_path)
 
         if user:
             # Deduplication: don't charge/log if same file scanned within 30s
             if _is_duplicate_scan(user["id"], file_hash):
-                print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']}")
+                logger.info(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']}")
                 response_data["remaining_credits"] = user["credits"]
             else:
                 if not check_and_deduct_credit(user["id"], 1, token):
@@ -536,7 +591,7 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
         return _sanitize_numpy(response_data)
 
     except Exception as e:
-        print(f"[OpenSeek API] Forensic Error: {e}")
+        logger.error(f"[OpenSeek API] Forensic Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_path):
@@ -545,7 +600,8 @@ async def detect_image(file: UploadFile = File(...), authorization: Optional[str
 
 
 @app.post("/analyze-image-data")
-async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] = Header(None)):
+@rate_limit()
+async def analyze_image_data(request: Request, req: MediaUrlRequest, authorization: str | None = Header(None)):
     """Extension Context URL Fetcher (Routed through advanced pipeline)"""
     token = None
     user = None
@@ -572,6 +628,8 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
             r = await client.get(req.url, follow_redirects=True)
             if r.status_code != 200:
                 raise HTTPException(status_code=502, detail="Could not download image from URL")
+            if len(r.content) > MAX_IMAGE_SIZE_MB * 1024 * 1024:
+                raise HTTPException(status_code=413, detail=f"Image too large (limit {MAX_IMAGE_SIZE_MB} MB).")
             with open(temp_path, "wb") as f:
                 f.write(r.content)
 
@@ -582,7 +640,7 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
             if user:
                 # Deduplication: don't charge/log if same file scanned within 30s
                 if _is_duplicate_scan(user["id"], file_hash):
-                    print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
+                    logger.info(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']} (hash {file_hash[:8]}...)")
                     cached_res["remaining_credits"] = user["credits"]
                     return _sanitize_numpy(cached_res)
                 if not check_and_deduct_credit(user["id"], 1, token):
@@ -609,27 +667,27 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                     with open(temp_path, "rb") as f:
                         files = {"file": (filename, f, "image/jpeg")}
                         target_url = f"{colab_url.rstrip('/')}/analyze"
-                        print(f"[OpenSeek API] Forwarding fetched image to external inference server: {target_url}")
+                        logger.info(f"[OpenSeek API] Forwarding fetched image to external inference server: {target_url}")
                         response = await client.post(target_url, files=files)
-                        
+
                         if response.status_code == 200:
                             response_data = response.json()
                         else:
-                            print(f"[OpenSeek API] External server returned status {response.status_code}. Falling back to internal models.")
+                            logger.warning(f"[OpenSeek API] External server returned status {response.status_code}. Falling back to internal models.")
             except Exception as e:
-                print(f"[OpenSeek API] External inference connection failed ({e}). Falling back to internal models.")
-                
+                logger.error(f"[OpenSeek API] External inference connection failed ({e}). Falling back to internal models.")
+
         if response_data is None:
             if _ensemble is not None:
                 # Full Image Analysis (deep mode: include Grad-CAM + patch scan)
                 full_res = _ensemble.forward_analyze(temp_path, fast=False)
-                
+
                 # Respect new risk level logic
                 ai_probability = full_res["ai_probability"]
                 if ai_probability <= 0.40: risk = "Low"
                 elif ai_probability <= 0.65: risk = "Medium"
                 else: risk = "High"
-                    
+
                 response_data = {
                     "is_ai_generated": ai_probability > 0.5,
                     "ai_probability": ai_probability,
@@ -642,19 +700,25 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
                     "embedding_anomaly_score": full_res.get("embedding_anomaly_score", 0.0),
                     "face_detected": full_res.get("face_detected", False),
                     "facial_ai_probability": full_res.get("facial_ai_probability"),
-                    "invisible_face_anomaly": full_res.get("invisible_face_anomaly")
+                    "invisible_face_anomaly": full_res.get("invisible_face_anomaly"),
+                    "flowchart_analysis": full_res.get("flowchart_analysis"),
+                    "pipeline": full_res.get("pipeline", "Ensemble Model Pipeline"),
+                    "forensic_report": full_res.get("forensic_report"),
+                    "dct_anomaly_score": full_res.get("dct_anomaly_score", 0.0),
+                    "adversarial_noise_score": full_res.get("adversarial_noise_score", 0.0),
+                    "attributed_generator": full_res.get("attributed_generator", "Unknown")
                 }
-                
+
                 if full_res["confidence_score"] < 0.4:
                     response_data["risk_level"] = "Uncertain"
             else:
-                print("[OpenSeek API] Local ensemble model is not loaded (running in low-memory environment). Using fallback logic.")
+                logger.warning("[OpenSeek API] Local ensemble model is not loaded (running in low-memory environment). Using fallback logic.")
                 response_data = get_fallback_analysis_result(temp_path)
-            
+
         if user:
             # Deduplication: don't charge/log if same file scanned within 30s
             if _is_duplicate_scan(user["id"], file_hash):
-                print(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']}")
+                logger.info(f"[OpenSeek API] 🔁 Duplicate scan blocked for user {user['id']}")
                 response_data["remaining_credits"] = user["credits"]
             else:
                 if not check_and_deduct_credit(user["id"], 1, token):
@@ -680,44 +744,48 @@ async def analyze_image_data(req: MediaUrlRequest, authorization: Optional[str] 
         if os.path.exists(temp_path): os.remove(temp_path)
 
 @app.post("/analyze-image")
-async def analyze_image_alias(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
+@rate_limit()
+async def analyze_image_alias(request: Request, file: UploadFile = File(...), authorization: str | None = Header(None)):
     """Alias for multipart extensions."""
-    return await detect_image(file, authorization)
+    return await detect_image(request, file, authorization)
 
 @app.get("/health")
 async def health():
     import os as _os
-    has_sa_json  = bool(_os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip())
-    has_sa_file  = _os.path.exists("firebase_service_account.json")
-    db_backend   = "firestore" if _using_firestore else "sqlite"
-
-    # Quick user count for diagnosis
-    user_count = None
-    try:
-        if _using_firestore:
-            from firebase_db import _get_db
-            user_count = len(list(_get_db().collection("users").limit(200).get()))
-        else:
-            import sqlite3 as _sq
-            conn = _sq.connect("openseek_cache.db")
-            row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
-            conn.close()
-            user_count = row[0] if row else 0
-    except Exception:
-        user_count = -1
-
+    db_backend = "firestore" if _using_firestore else "sqlite"
     colab_url = _os.getenv("COLAB_MODEL_URL") or _os.getenv("EXTERNAL_MODEL_URL")
-    return {
+
+    payload = {
         "status": "ok",
         "model": "Advanced OpenSeek Multimodal Target",
         "models_loaded": _ensemble is not None,
         "hybrid_mode_active": colab_url is not None,
-        "colab_url_configured": colab_url,
         "database": db_backend,
-        "firebase_sa_env_set": has_sa_json,
-        "firebase_sa_file_exists": has_sa_file,
-        "registered_users": user_count,
     }
+
+    # Sensitive diagnostics (secret presence, user counts, config) only in DEBUG —
+    # an unauthenticated public health check must not leak deployment internals.
+    if DEBUG:
+        user_count = None
+        try:
+            if _using_firestore:
+                from firebase_db import _get_db
+                user_count = len(list(_get_db().collection("users").limit(200).get()))
+            else:
+                import sqlite3 as _sq
+                conn = _sq.connect(DB_PATH)
+                row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
+                conn.close()
+                user_count = row[0] if row else 0
+        except Exception:
+            user_count = -1
+        payload.update({
+            "colab_url_configured": colab_url,
+            "firebase_sa_env_set": bool(_os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()),
+            "firebase_sa_file_exists": _os.path.exists("firebase_service_account.json"),
+            "registered_users": user_count,
+        })
+    return payload
 
 # ── Auth & Dashboard Endpoints ────────────────────────────────────────────────
 
@@ -756,14 +824,14 @@ async def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail=str(e))
 
 @app.post("/auth/logout")
-async def logout(authorization: Optional[str] = Header(None)):
+async def logout(authorization: str | None = Header(None)):
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         delete_session(token)
     return {"status": "success", "message": "Logged out successfully"}
 
 @app.get("/auth/me")
-async def get_me(authorization: Optional[str] = Header(None)):
+async def get_me(authorization: str | None = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized")
     token = authorization.split(" ")[1]
@@ -773,7 +841,7 @@ async def get_me(authorization: Optional[str] = Header(None)):
     return {"id": user["id"], "email": user["email"], "credits": user["credits"]}
 
 @app.get("/user/history")
-async def user_history(authorization: Optional[str] = Header(None)):
+async def user_history(authorization: str | None = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized")
     token = authorization.split(" ")[1]
@@ -787,7 +855,7 @@ async def user_history(authorization: Optional[str] = Header(None)):
 class FirebaseLoginRequest(BaseModel):
     id_token: str
     email: str
-    name: Optional[str] = None
+    name: str | None = None
 
 @app.get("/config/firebase")
 async def get_firebase_config(response: Response):
@@ -806,10 +874,10 @@ async def get_firebase_config(response: Response):
         try:
             if HAS_FIREBASE_ADMIN and not firebase_admin._apps:
                 firebase_admin.initialize_app()
-                print("[OpenSeek API] Firebase Admin Initialized successfully.")
+                logger.info("[OpenSeek API] Firebase Admin Initialized successfully.")
         except Exception as e:
-            print(f"[OpenSeek API] Firebase Admin Init failed: {e}")
-            
+            logger.error(f"[OpenSeek API] Firebase Admin Init failed: {e}")
+
     return config
 
 @app.post("/auth/firebase-login")
@@ -820,7 +888,7 @@ async def firebase_login(req: FirebaseLoginRequest):
     if _using_firestore:
         if req.id_token == "MOCK_FIREBASE_TOKEN":
             raise HTTPException(status_code=401, detail="Mock Google Sign-In is disabled when live Firebase is active.")
-        
+
         try:
             decoded_token = firebase_auth.verify_id_token(req.id_token)
             verified_email = decoded_token.get("email")
@@ -829,7 +897,7 @@ async def firebase_login(req: FirebaseLoginRequest):
             else:
                 raise HTTPException(status_code=401, detail="Firebase token did not contain a valid email address")
         except Exception as e:
-            print(f"[OpenSeek Auth] Firebase token verification failed: {e}")
+            logger.error(f"[OpenSeek Auth] Firebase token verification failed: {e}")
             raise HTTPException(status_code=401, detail=f"Firebase token verification failed: {str(e)}")
     else:
         # Sandbox / SQLite mode: allow MOCK_FIREBASE_TOKEN or real token if verification works
@@ -840,7 +908,7 @@ async def firebase_login(req: FirebaseLoginRequest):
                 if verified_email:
                     email = verified_email.strip().lower()
             except Exception as e:
-                print(f"[OpenSeek Auth] Firebase token verification note (sandbox mode): {e}")
+                logger.info(f"[OpenSeek Auth] Firebase token verification note (sandbox mode): {e}")
 
     if not email:
         raise HTTPException(status_code=400, detail="No email provided or token verification failed")
@@ -868,28 +936,28 @@ def remove_file(path: str):
     try:
         os.remove(path)
     except Exception as e:
-        print(f"[OpenSeek API] Error removing temporary zip file {path}: {e}")
+        logger.error(f"[OpenSeek API] Error removing temporary zip file {path}: {e}")
 
 @app.get("/download-extension")
 async def download_extension(background_tasks: BackgroundTasks):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     extension_dir = os.path.join(base_dir, "extension")
-    
+
     if not os.path.exists(extension_dir):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         extension_dir = os.path.join(current_dir, "extension")
-        
+
     if not os.path.exists(extension_dir):
         raise HTTPException(status_code=404, detail="Extension folder not found")
-        
+
     # Create a temporary file to hold the zip
     temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
     temp_zip_path = temp_zip.name
     temp_zip.close()
-    
+
     try:
         with zipfile.ZipFile(temp_zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for root, dirs, files in os.walk(extension_dir):
+            for root, _dirs, files in os.walk(extension_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
                     # Exclude version control or other temporary files
@@ -901,7 +969,7 @@ async def download_extension(background_tasks: BackgroundTasks):
         if os.path.exists(temp_zip_path):
             os.remove(temp_zip_path)
         raise HTTPException(status_code=500, detail=f"Failed to create ZIP package: {str(e)}")
-        
+
     background_tasks.add_task(remove_file, temp_zip_path)
     return FileResponse(
         temp_zip_path,
@@ -931,7 +999,7 @@ async def get_dashboard():
         </body>
         </html>
         """)
-    with open(dashboard_path, "r", encoding="utf-8") as f:
+    with open(dashboard_path, encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 if __name__ == "__main__":

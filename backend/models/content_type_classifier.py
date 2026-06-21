@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
+
 class ContentTypeClassifier(nn.Module):
     """
     Ultra-lightweight pipeline router (<20ms inference).
@@ -13,14 +14,14 @@ class ContentTypeClassifier(nn.Module):
     def __init__(self, device='cpu'):
         super().__init__()
         self.device = device
-        
+
         # Use MobileNetV3 Small for extreme low-latency classification with ImageNet weights
-        self.model = models.mobilenet_v3_small(weights="DEFAULT") 
-        
+        self.model = models.mobilenet_v3_small(weights="DEFAULT")
+
         # Modify final classifier for 3-class output
         in_features = self.model.classifier[3].in_features
         self.model.classifier[3] = nn.Linear(in_features, 3)
-        
+
         self.to(self.device)
         self.eval()
 
@@ -35,6 +36,6 @@ class ContentTypeClassifier(nn.Module):
     def classify(self, x):
         probs = self.forward(x)
         pred_class = torch.argmax(probs, dim=1).item()
-        
+
         classes = ["Photograph", "Digital Illustration", "3D Render"]
         return classes[pred_class]

@@ -11,6 +11,13 @@ build/
 # Environment
 .env
 .env.*
+!.env.example
+
+# Secrets / credentials (NEVER commit)
+firebase_service_account.json
+*service_account*.json
+*.pem
+*.key
 
 # Database
 *.db

@@ -1,7 +1,7 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
+
 
 class NoiseBranch(nn.Module):
     """
@@ -13,7 +13,7 @@ class NoiseBranch(nn.Module):
         # SRM Kernels (fixed, non-trainable)
         self.srm_conv = nn.Conv2d(1, 3, kernel_size=5, stride=1, padding=2, bias=False)
         self._init_srm_kernels()
-        
+
         # Classification backbone
         self.backbone = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
@@ -56,7 +56,7 @@ class NoiseBranch(nn.Module):
             [2, -6, 8, -6, 2],
             [-1, 2, -2, 2, -1]
         ])
-        
+
         kernels = torch.from_numpy(np.stack([k1, k2, k3])).float().unsqueeze(1)
         self.srm_conv.weight.data = kernels
         self.srm_conv.weight.requires_grad = False

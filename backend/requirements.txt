@@ -1,37 +1,48 @@
+# OpenSeek backend runtime dependencies.
+# Bounded version ranges keep builds reproducible: lower bound = features we use,
+# upper bound = next major (avoids a surprise breaking release in production).
+
 # ─── Core Framework ───────────────────────────────────────────────────────────
-fastapi>=0.111.0
-uvicorn[standard]>=0.29.0
-pydantic>=2.7.0
-python-multipart>=0.0.9
+fastapi>=0.111.0,<1.0.0
+uvicorn[standard]>=0.29.0,<1.0.0
+pydantic>=2.7.0,<3.0.0
+python-multipart>=0.0.9,<1.0.0
 
 # ─── Async HTTP client ────────────────────────────────────────────────────────
-httpx>=0.27.0
+httpx>=0.27.0,<1.0.0
 
 # ─── Rate Limiting ────────────────────────────────────────────────────────────
-slowapi>=0.1.9
+slowapi>=0.1.9,<1.0.0
 
 # ─── Async SQLite ─────────────────────────────────────────────────────────────
-aiosqlite>=0.20.0
+aiosqlite>=0.20.0,<1.0.0
 
 # PyTorch will be installed as CPU-only directly in the Dockerfile to save space.
 
 # ─── Computer Vision ──────────────────────────────────────────────────────────
-opencv-contrib-python>=4.9.0.80
+opencv-contrib-python>=4.9.0.80,<5.0.0
 mediapipe==0.10.14
-Pillow>=10.0.0
+Pillow>=10.0.0,<12.0.0
 
 # ─── Numerics ─────────────────────────────────────────────────────────────────
-numpy>=1.26.0
+# Pinned <2.0: mediapipe 0.10.x and the current torch/opencv stack require NumPy 1.x.
+numpy>=1.26.0,<2.0.0
 
 # ─── AI Models (HuggingFace) ──────────────────────────────────────────────────
-transformers>=4.40.0
-accelerate>=0.30.0
-timm>=0.9.0
-einops>=0.7.0
-lpips>=0.1.4
+# transformers <5.0: 5.x requires torch>=2.4; we install torch CPU which may lag,
+# and the image-classification pipeline API we use is stable across 4.x.
+transformers>=4.40.0,<5.0.0
+accelerate>=0.30.0,<1.0.0
+timm>=0.9.0,<2.0.0
+einops>=0.7.0,<1.0.0
+lpips>=0.1.4,<1.0.0
+
+# ─── Observability ────────────────────────────────────────────────────────────
+# Error tracking is opt-in: only active when SENTRY_DSN is set (see observability.py).
+sentry-sdk>=2.0.0,<3.0.0
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
-tqdm>=4.66.0
-firebase-admin>=6.5.0
-google-cloud-firestore>=2.16.0
-python-dotenv>=1.0.0
+tqdm>=4.66.0,<5.0.0
+firebase-admin>=6.5.0,<7.0.0
+google-cloud-firestore>=2.16.0,<3.0.0
+python-dotenv>=1.0.0,<2.0.0

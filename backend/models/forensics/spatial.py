@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 
+
 class SpatialBranch(nn.Module):
     """
     Forensic Branch: Spatial Analysis using Swin-Base Transformer.
@@ -14,7 +15,7 @@ class SpatialBranch(nn.Module):
         self.features = backbone.features
         self.norm = backbone.norm
         self.avgpool = backbone.avgpool
-        
+
         # Binary output: Real (0) vs AI (1)
         # Swin-Base feature dim is 1024
         self.classifier = nn.Sequential(
@@ -29,7 +30,7 @@ class SpatialBranch(nn.Module):
         x = x.permute(0, 3, 1, 2) # (B, C, H, W)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        
+
         if return_features:
             return x
         return self.classifier(x)

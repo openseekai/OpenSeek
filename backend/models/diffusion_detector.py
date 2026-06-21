@@ -1,17 +1,19 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
-import numpy as np
+
 from models.forensics.generation_step_analyzer import GenerationStepAnalyzer
+
 
 class DiffusionDetector(nn.Module):
     """
     Phase 10: Strict Binary Diffusion Classifier
-    
+
     Enhanced with a Flowchart-Guided Generation Step Consistency Detector to isolate
     artifacts across the 6 steps of the image generation process.
-    
+
     Outputs probability distribution:
     Class 0: Real
     Class 1: Diffusion_AI
@@ -22,12 +24,12 @@ class DiffusionDetector(nn.Module):
         self.classes = ["Real", "Diffusion_AI"]
 
         # Using EfficientNetV2-S for highly accurate diffusion micro-pattern detection
-        self.model = models.efficientnet_v2_s(weights="IMAGENET1K_V1") 
-        
+        self.model = models.efficientnet_v2_s(weights="IMAGENET1K_V1")
+
         # Modify the classification head for binary classes
         in_features = self.model.classifier[1].in_features
         self.model.classifier[1] = nn.Linear(in_features, 2)
-        
+
         # Initialize the flowchart-guided generation consistency analyzer
         self.analyzer = GenerationStepAnalyzer()
 
@@ -49,8 +51,8 @@ class DiffusionDetector(nn.Module):
         with torch.no_grad():
             logits = self.forward(x)
             probs = F.softmax(logits, dim=1).squeeze().cpu().numpy()
-            
-        nn_real_prob = float(probs[0])
+
+        float(probs[0])
         nn_ai_prob = float(probs[1])
 
         flowchart_analysis = None
@@ -58,13 +60,13 @@ class DiffusionDetector(nn.Module):
             try:
                 analyzer_res = self.analyzer.analyze_image(image_path)
                 analyzer_ai_prob = analyzer_res["ai_probability"]
-                
+
                 # Blend: 40% neural network patterns + 60% flowchart consistency analysis.
                 # This makes the detection highly robust to compression, scaling, and unseen generators.
                 ai_probability = 0.40 * nn_ai_prob + 0.60 * analyzer_ai_prob
                 real_probability = 1.0 - ai_probability
                 probs = np.array([real_probability, ai_probability])
-                
+
                 flowchart_analysis = {
                     "is_ai": analyzer_res["is_ai_generated"],
                     "scores": analyzer_res["scores"],
@@ -78,7 +80,7 @@ class DiffusionDetector(nn.Module):
 
         pred_idx = np.argmax(probs)
         predicted_class = self.classes[pred_idx]
-        
+
         response = {
             "predicted_class": predicted_class,
             "probability_distribution": {
@@ -87,8 +89,8 @@ class DiffusionDetector(nn.Module):
             },
             "ai_probability": float(ai_probability)
         }
-        
+
         if flowchart_analysis is not None:
             response["flowchart_analysis"] = flowchart_analysis
-            
+
         return response

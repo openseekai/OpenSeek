@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, date
+from datetime import date, datetime
 
 try:
     import numpy as np
@@ -53,12 +53,12 @@ def sanitize_numpy(val):
         return val.isoformat()
 
     # 5. Check for dict-like objects or Pydantic models
-    if hasattr(val, "dict") and callable(getattr(val, "dict")):
+    if hasattr(val, "dict") and callable(val.dict):
         try:
             return sanitize_numpy(val.dict())
         except Exception:
             pass
-    if hasattr(val, "to_dict") and callable(getattr(val, "to_dict")):
+    if hasattr(val, "to_dict") and callable(val.to_dict):
         try:
             return sanitize_numpy(val.to_dict())
         except Exception:

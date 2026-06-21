@@ -1,7 +1,9 @@
 import json
+
 import numpy as np
 import torch
 from utils.serialization import sanitize_numpy
+
 
 def test_sanitize_numpy_scalars():
     # Test numpy float
@@ -54,7 +56,7 @@ def test_sanitize_nested_structures():
     }
 
     sanitized = sanitize_numpy(nested_data)
-    
+
     # Verify we can dump it to JSON
     json_str = json.dumps(sanitized)
     loaded = json.loads(json_str)

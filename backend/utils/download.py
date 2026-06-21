@@ -2,23 +2,21 @@
 OpenSeek — Safe async media downloader.
 Enforces size limits and Content-Type validation before saving.
 """
+import os
 import socket
 import tempfile
-import os
-from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
-
 from config import (
-    DOWNLOAD_TIMEOUT_S,
-    MAX_IMAGE_SIZE_MB,
-    MAX_VIDEO_SIZE_MB,
-    MAX_AUDIO_SIZE_MB,
+    ALLOWED_AUDIO_TYPES,
     ALLOWED_IMAGE_TYPES,
     ALLOWED_VIDEO_TYPES,
-    ALLOWED_AUDIO_TYPES,
     BLOCKED_IP_PREFIXES,
+    DOWNLOAD_TIMEOUT_S,
+    MAX_AUDIO_SIZE_MB,
+    MAX_IMAGE_SIZE_MB,
+    MAX_VIDEO_SIZE_MB,
 )
 
 _SIZE_MAP = {

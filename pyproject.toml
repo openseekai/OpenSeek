@@ -1,0 +1,34 @@
+# Tooling config for the OpenSeek project (lint + tests).
+# Runtime dependencies live in backend/requirements.txt.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+# Training/notebook scratch and vendored dirs are not held to app lint standards.
+extend-exclude = [
+    ".venv", "venv", "backend/venv",
+    "backend/training", "backend/scripts", "backend/train",
+    "colab_code.py", "*.ipynb",
+]
+
+[tool.ruff.lint]
+# A pragmatic, non-punishing rule set: real bugs (F), import hygiene (I),
+# and common gotchas (E, W, B, UP) without fighting the existing style.
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",   # line length handled by formatter, not enforced
+    "E402",   # module-level imports after code — intentional lazy/conditional imports
+    "E701",   # multiple statements on one line — readable risk-threshold one-liners
+    "E722",   # bare `except:` — used throughout for best-effort forensics fallbacks
+    "E741",   # ambiguous var names (l/I) — used in existing math code
+    "B008",   # FastAPI uses `= Depends()/File()` defaults by design
+    "B904",   # raise-from in except — not required for these HTTPException re-raises
+    "B905",   # zip() without strict= — paired lists here are equal-length by construction
+    "UP038",  # isinstance tuple form is fine
+]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+addopts = "-q"
+# The app auto-mocks the model layer when pytest is importing it, so no env
+# plugin is required. CI also exports TESTING=1 for the lifespan guard.

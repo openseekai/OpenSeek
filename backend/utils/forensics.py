@@ -1,11 +1,12 @@
-import PIL.Image
+
 import PIL.ExifTags
-from typing import Dict, Optional
+import PIL.Image
+
 
 class MetadataAnalyzer:
     """
     Forensic Tool: Scans image metadata for AI signatures.
-    Targets EXIF/IPTC tags that modern AI models often leak, 
+    Targets EXIF/IPTC tags that modern AI models often leak,
     and penalizes missing or impossible camera parameter combinations.
     """
     AI_SIGNATURES = [
@@ -15,20 +16,20 @@ class MetadataAnalyzer:
     ]
 
     @staticmethod
-    def scan(image_path: str) -> Dict:
+    def scan(image_path: str) -> dict:
         """Analyze image metadata for AI software traces and parameter inconsistencies."""
         info = {
-            "has_ai_metadata": False, 
-            "software": None, 
+            "has_ai_metadata": False,
+            "software": None,
             "tags_found": [],
             "suspicion_score": 0.0,
             "anomalies": []
         }
-        
+
         try:
             img = PIL.Image.open(image_path)
             exif = img.getexif()
-            
+
             if not exif:
                 # No standard EXIF. Suspicious if from a raw source, but common on social media.
                 # Just add a lightweight baseline suspicion.
@@ -39,12 +40,12 @@ class MetadataAnalyzer:
             valid_camera_found = False
             has_iso = False
             has_exposure = False
-            
+
             # Check standard EXIF tags
             for tag_id, value in exif.items():
                 tag = PIL.ExifTags.TAGS.get(tag_id, tag_id)
                 value_str = str(value).lower()
-                
+
                 # Check for explicit AI signatures
                 for sig in MetadataAnalyzer.AI_SIGNATURES:
                     if sig in value_str:
@@ -52,7 +53,7 @@ class MetadataAnalyzer:
                         info["software"] = sig
                         info["tags_found"].append(f"{tag}: {sig}")
                         info["suspicion_score"] = 1.0
-                
+
                 # Advanced EXIF Verification
                 if tag in ['Make', 'Model']:
                     if any(x in value_str for x in ['canon', 'nikon', 'sony', 'apple', 'samsung', 'google', 'fujifilm', 'panasonic']):
@@ -60,7 +61,7 @@ class MetadataAnalyzer:
                     elif len(value_str) > 2:
                         # Obscure or fake Make/Model string
                         info["anomalies"].append(f"Suspicious Camera {tag}: {value}")
-                        
+
                 if tag == 'ISOSpeedRatings':
                     has_iso = True
                 if tag == 'ExposureTime':
@@ -70,7 +71,7 @@ class MetadataAnalyzer:
             if exif and (not valid_camera_found):
                 info["suspicion_score"] += 0.3
                 info["anomalies"].append("EXIF present but lacks valid Camera Make/Model")
-            
+
             if valid_camera_found and not (has_iso or has_exposure):
                 info["suspicion_score"] += 0.4
                 info["anomalies"].append("Claims to be real camera but lacks required sensor parameters (ISO/Exposure)")
@@ -87,7 +88,7 @@ class MetadataAnalyzer:
 
         except Exception as e:
             print(f"[Metadata] Error: {e}")
-            
+
         info["suspicion_score"] = min(info["suspicion_score"], 1.0)
         return info
 
@@ -96,10 +97,10 @@ class ExplanationGenerator:
     Engine: Converts forensic signals into human-readable technical reasons.
     """
     @staticmethod
-    def generate(res: Dict) -> str:
+    def generate(res: dict) -> str:
         """Compose an explanation based on the forensic evidence."""
         reasons = []
-        
+
         # 1. Spectral Reason
         if res.get("spectral_score", 0) > 0.6:
             reasons.append("High-frequency spectral artifacts (FFT) suggest synthetic generation noise.")
@@ -109,7 +110,7 @@ class ExplanationGenerator:
         # 2. Expert Reason
         if res.get("expert_score", 0) > 0.4:
             reasons.append("Deep residual fingerprints matching modern Diffusion models identified.")
-        
+
         # 3. Biometric Reason (for Humans)
         if res.get("face_detected"):
             if res.get("iris_score", 0) > 0.6:
@@ -123,5 +124,5 @@ class ExplanationGenerator:
 
         if not reasons:
             return "No definitive AI artifacts found. Visual patterns align with standard photography."
-        
+
         return " ".join(reasons[:2]) # Keep it concise
